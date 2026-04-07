@@ -122,7 +122,7 @@
 ### 2.1 进度勾选区
 
 - [x] Task 1 完成：项目脚手架与 Sidecar 打包
-- [ ] Task 2 完成：Rust 领域模型与持久化
+- [x] Task 2 完成：Rust 领域模型与持久化
 - [ ] Task 3 完成：校验器与 `gost.yaml` 渲染
 - [ ] Task 4 完成：`gost` 进程管理与运行态
 - [ ] Task 5 完成：Tauri Command 与事件推送
@@ -196,7 +196,7 @@ npm run tauri build
 
 ### Task 2: Rust 领域模型与持久化
 
-**任务状态：** `- [ ] 未完成`
+**任务状态：** `- [x] 已完成`
 
 **Files:**
 - Create: `src-tauri/src/app_state.rs`
@@ -209,13 +209,13 @@ npm run tauri build
 - Create: `src-tauri/tests/rule_store_tests.rs`
 - Modify: [docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md](/home/lifei6671/src/github.com/lifei6671/Porthole/docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md)
 
-- [ ] Step 1: 定义规则领域模型，字段至少包含 `id`、`name`、`enabled`、`protocol`、`listen_host`、`listen_port`、`target_host`、`target_port`、`remark`、`created_at`、`updated_at`
-- [ ] Step 2: 定义运行态模型，至少包含进程状态、规则运行状态、最近错误摘要、当前运行集合
-- [ ] Step 3: 实现应用数据目录路径管理，明确 `rules.toml`、`gost.yaml`、PID 文件的保存路径
-- [ ] Step 4: 实现 `RuleStore` 的读取、原子写入、默认配置初始化逻辑
-- [ ] Step 5: 为 `RuleStore` 增加并发写保护，使用 `Mutex` 或统一写入口，避免 Tauri 并发命令导致交叉覆盖
-- [ ] Step 6: 编写 TOML 读写测试，覆盖空文件初始化、正常保存、重新加载、时间字段序列化
-- [ ] Step 7: 执行 Rust 单元测试
+- [x] Step 1: 定义规则领域模型，字段至少包含 `id`、`name`、`enabled`、`protocol`、`listen_host`、`listen_port`、`target_host`、`target_port`、`remark`、`created_at`、`updated_at`
+- [x] Step 2: 定义运行态模型，至少包含进程状态、规则运行状态、最近错误摘要、当前运行集合
+- [x] Step 3: 实现应用数据目录路径管理，明确 `rules.toml`、`gost.yaml`、PID 文件的保存路径
+- [x] Step 4: 实现 `RuleStore` 的读取、原子写入、默认配置初始化逻辑
+- [x] Step 5: 为 `RuleStore` 增加并发写保护，使用 `Mutex` 或统一写入口，避免 Tauri 并发命令导致交叉覆盖
+- [x] Step 6: 编写 TOML 读写测试，覆盖空文件初始化、正常保存、重新加载、时间字段序列化
+- [x] Step 7: 执行 Rust 单元测试
 
 **Run:**
 
@@ -229,7 +229,7 @@ cargo test --test rule_store_tests -- --nocapture
 - `rules.toml` 可正常生成和读取
 - 并发写保护逻辑通过测试
 
-- [ ] Step 8: 回写本计划文档，标记 Task 2 已完成并记录测试结果
+- [x] Step 8: 回写本计划文档，标记 Task 2 已完成并记录测试结果
 
 **Verification Criteria:**
 
@@ -552,3 +552,7 @@ npm run tauri build
   - 验证：`npm run tauri build`，`npm run tauri -- build --bundles deb`
   - 结果：`PASS`
   - 说明：补齐并替换为合法 RGBA `src-tauri/icons/icon.png`，`npm run tauri build` 已越过 icon 阻塞并进入打包阶段，`deb` 打包完整通过
+- 2026-04-07 Task 2 完成
+  - 验证：`cd src-tauri && cargo test --test rule_store_tests -- --nocapture`
+  - 结果：`PASS`
+  - 说明：完成规则模型、运行态模型、应用数据路径与 `RuleStore` 持久化基础，修正测试模块路径与 `tauri::Manager` 导入后，4 个 `rule_store` 测试全部通过
