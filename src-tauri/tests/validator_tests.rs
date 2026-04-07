@@ -4,8 +4,16 @@ mod model;
 #[path = "../src/support/paths.rs"]
 pub mod support_paths;
 
+#[path = "../src/support/job_object.rs"]
+pub mod support_job_object;
+
+#[path = "../src/support/pid_file.rs"]
+pub mod support_pid_file;
+
 mod support {
+    pub use crate::support_job_object as job_object;
     pub use crate::support_paths as paths;
+    pub use crate::support_pid_file as pid_file;
 }
 
 #[path = "../src/service/mod.rs"]

@@ -124,8 +124,8 @@
 - [x] Task 1 完成：项目脚手架与 Sidecar 打包
 - [x] Task 2 完成：Rust 领域模型与持久化
 - [x] Task 3 完成：校验器与 `gost.yaml` 渲染
-- [ ] Task 4 完成：`gost` 进程管理与运行态
-- [ ] Task 5 完成：Tauri Command 与事件推送
+- [x] Task 4 完成：`gost` 进程管理与运行态
+- [x] Task 5 完成：Tauri Command 与事件推送
 - [ ] Task 6 完成：前端骨架与规则列表
 - [ ] Task 7 完成：规则编辑、日志与状态 UI
 - [ ] Task 8 完成：端到端验证与文档收尾
@@ -285,10 +285,7 @@ cargo test --test gost_renderer_tests -- --nocapture
 
 ### Task 4: `gost` 进程管理与运行态
 
-**任务状态：** `- [ ] 未完成`
-
-> 当前切片仅落地 `support/job_object.rs` 与 `support/pid_file.rs`，供后续
-> `gost_process.rs` 直接接入；本任务整体仍保持未完成。
+**任务状态：** `- [x] 已完成`
 
 **Files:**
 - Create: `src-tauri/src/service/gost_process.rs`
@@ -299,15 +296,15 @@ cargo test --test gost_renderer_tests -- --nocapture
 - Modify: `src-tauri/src/support/paths.rs`
 - Modify: [docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md](/home/lifei6671/src/github.com/lifei6671/Porthole/docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md)
 
-- [ ] Step 1: 实现 `gost.exe` 启动、停止、重载基础逻辑
-- [ ] Step 2: 启动后立即绑定 Windows Job Object，确保父进程退出时 sidecar 自动终止
-- [ ] Step 3: 实现 PID 文件写入与启动前残留清理兜底逻辑
-- [ ] Step 4: 启动 `gost` 时同时开启本地回环 API 服务，仅监听 `127.0.0.1` 或 `[::1]`
-- [ ] Step 5: 实现 API 探活启动检测，采用 `100ms` 轮询、`2s` 超时
-- [ ] Step 6: 实现 stdout / stderr 读取与运行态更新
-- [ ] Step 7: 实现“运行集合变更 -> 互斥重载”流程，确保快速连续点击不会把状态打乱
-- [ ] Step 8: 编写进程管理测试，至少覆盖“子进程退出更新状态”“PID 文件清理”“API 不可达判定启动失败”
-- [ ] Step 9: 执行 Rust 测试
+- [x] Step 1: 实现 `gost.exe` 启动、停止、重载基础逻辑
+- [x] Step 2: 启动后立即绑定 Windows Job Object，确保父进程退出时 sidecar 自动终止
+- [x] Step 3: 实现 PID 文件写入与启动前残留清理兜底逻辑
+- [x] Step 4: 启动 `gost` 时同时开启本地回环 API 服务，仅监听 `127.0.0.1` 或 `[::1]`
+- [x] Step 5: 实现 API 探活启动检测，采用 `100ms` 轮询、`2s` 超时
+- [x] Step 6: 实现 stdout / stderr 读取与运行态更新
+- [x] Step 7: 实现“运行集合变更 -> 互斥重载”流程，确保快速连续点击不会把状态打乱
+- [x] Step 8: 编写进程管理测试，至少覆盖“子进程退出更新状态”“PID 文件清理”“API 不可达判定启动失败”
+- [x] Step 9: 执行 Rust 测试
 
 **Run:**
 
@@ -322,7 +319,7 @@ cargo test --test gost_process_tests -- --nocapture
 - 异常退出能被正确识别
 - 重载路径可串行执行
 
-- [ ] Step 10: 回写本计划文档，标记 Task 4 已完成并记录测试结果
+- [x] Step 10: 回写本计划文档，标记 Task 4 已完成并记录测试结果
 
 **Verification Criteria:**
 
@@ -334,7 +331,7 @@ cargo test --test gost_process_tests -- --nocapture
 
 ### Task 5: Tauri Command 与事件推送
 
-**任务状态：** `- [ ] 未完成`
+**任务状态：** `- [x] 已完成`
 
 **Files:**
 - Create: `src-tauri/src/commands/mod.rs`
@@ -346,13 +343,13 @@ cargo test --test gost_process_tests -- --nocapture
 - Modify: `src-tauri/src/app_state.rs`
 - Modify: [docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md](/home/lifei6671/src/github.com/lifei6671/Porthole/docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md)
 
-- [ ] Step 1: 暴露 `list_rules`、`create_rule`、`update_rule`、`delete_rule`
-- [ ] Step 2: 暴露 `start_rule`、`stop_rule`、`start_all_enabled_rules`、`stop_all_rules`
-- [ ] Step 3: 暴露 `get_runtime_status`、`clear_logs`
-- [ ] Step 4: 实现事件推送器，至少覆盖“规则状态变化”“进程异常退出”“日志追加”
-- [ ] Step 5: 前端初始化时通过 `get_runtime_status()` 拉一次快照，后续主要依赖事件更新
-- [ ] Step 6: 编写命令层测试，验证状态变更后能推送正确事件
-- [ ] Step 7: 执行 Rust 测试
+- [x] Step 1: 暴露 `list_rules`、`create_rule`、`update_rule`、`delete_rule`
+- [x] Step 2: 暴露 `start_rule`、`stop_rule`、`start_all_enabled_rules`、`stop_all_rules`
+- [x] Step 3: 暴露 `get_runtime_status`、`clear_logs`
+- [x] Step 4: 实现事件推送器，至少覆盖“规则状态变化”“进程异常退出”“日志追加”
+- [x] Step 5: 前端初始化时通过 `get_runtime_status()` 拉一次快照，后续主要依赖事件更新
+- [x] Step 6: 编写命令层测试，验证状态变更后能推送正确事件
+- [x] Step 7: 执行 Rust 测试
 
 **Run:**
 
@@ -366,7 +363,7 @@ cargo test --test commands_tests -- --nocapture
 - 命令调用成功
 - 事件推送包含正确的运行态快照
 
-- [ ] Step 8: 回写本计划文档，标记 Task 5 已完成并记录测试结果
+- [x] Step 8: 回写本计划文档，标记 Task 5 已完成并记录测试结果
 
 **Verification Criteria:**
 
@@ -563,3 +560,11 @@ npm run tauri build
   - 验证：`cd src-tauri && cargo test --test validator_tests -- --nocapture`，`cd src-tauri && cargo test --test gost_renderer_tests -- --nocapture`
   - 结果：`PASS`
   - 说明：补齐规则保存前/启动前校验与 `gost.yaml` 渲染，修复 `Protocol` 缺少 `Hash` 派生导致的编译错误后，2 组 Task 3 单测共 10 条全部通过
+- 2026-04-07 Task 4 完成
+  - 验证：`cd src-tauri && cargo fmt --all && cargo test --test gost_process_tests -- --nocapture`
+  - 结果：`PASS`
+  - 说明：完成 `gost_process.rs`、Windows/非 Windows `Job Object` 支持层、PID 文件读写清理、回环地址 API 探活、stdout/stderr 日志采集与互斥重载流程，`gost_process` 相关 7 条测试全部通过
+- 2026-04-07 Task 5 完成
+  - 验证：`cd src-tauri && cargo fmt --all && cargo test --test commands_tests -- --nocapture`，`cd src-tauri && cargo test --tests -- --nocapture`，`npm run build`
+  - 结果：`PASS`
+  - 说明：完成 Tauri 命令层、运行态事件桥接与前端快照初始化链路，新增 `commands_tests.rs` 覆盖规则 CRUD、运行命令、日志清理与进程异常退出事件，前端已通过 `get_runtime_status` + 事件监听展示实时状态
