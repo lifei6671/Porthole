@@ -13,6 +13,7 @@ export const runtimeChangedEvent = "runtime://changed";
 export const rulesChangedEvent = "rules://changed";
 export const logsAppendedEvent = "logs://appended";
 export const processExitedEvent = "runtime://process-exited";
+export const closeRequestedEvent = "app://close-requested";
 
 export async function listRules(): Promise<Rule[]> {
   return invoke<Rule[]>("list_rules");
@@ -52,6 +53,14 @@ export async function stopAllRules() {
 
 export async function clearLogs(): Promise<void> {
   await invoke("clear_logs");
+}
+
+export async function hideToTray(): Promise<void> {
+  await invoke("hide_to_tray");
+}
+
+export async function exitApplication(): Promise<void> {
+  await invoke("exit_application");
 }
 
 export type {

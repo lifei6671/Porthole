@@ -602,3 +602,7 @@ npm run tauri build
   - 验证：`cd src-tauri && cargo check`，`make build-win`
   - 结果：`PASS`
   - 说明：拦截主窗口关闭事件，先立即隐藏窗口，再快速终止 `gost` 子进程并退出应用，避免关闭时出现明显卡顿
+- 2026-04-07 补充变更：托盘驻留与自定义关闭提示
+  - 验证：`cd src-tauri && cargo check`，`npm run test -- close-to-tray-dialog sidebar`，`make build-win`
+  - 结果：`PASS`
+  - 说明：接入 Tauri 托盘图标与菜单，关闭主窗口时不再直接退出，而是由前端显示自定义确认弹层；选择隐藏后应用继续驻留并可从托盘恢复，选择退出则执行快速退出链路

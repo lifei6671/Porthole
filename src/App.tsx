@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { useEffect, useState } from "react";
 
 import {
   clearLogs,
+  closeRequestedEvent,
   createRule,
   deleteRule,
+  exitApplication,
+  hideToTray,
   startRule,
   stopRule,
   updateRule,
 } from "./lib/api";
+import { CloseToTrayDialog } from "./components/close-to-tray-dialog";
 import { PageHeader } from "./components/page-header";
 import { RuleDialog } from "./components/rule-dialog";
 import { Sidebar, type AppPage } from "./components/sidebar";
@@ -83,6 +88,8 @@ export function App() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<AppPage>("home");
   const [actionPending, setActionPending] = useState(false);
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [closeActionPending, setCloseActionPending] = useState(false);
 
   const activeRuleCount = runtime?.active_rule_ids.length ?? 0;
   const busy = rulesLoading || runtimeLoading || actionPending;
@@ -91,6 +98,28 @@ export function App() {
   function addAppLog(level: UILogEntry["level"], message: string) {
     setAppLogs((current) => appendUILog(current, "app", level, message));
   }
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | null = null;
+
+    async function bindClosePrompt() {
+      unlisten = await listen(closeRequestedEvent, () => {
+        if (!disposed) {
+          setCloseDialogOpen(true);
+        }
+      });
+    }
+
+    bindClosePrompt();
+
+    return () => {
+      disposed = true;
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, []);
 
   async function handleClearLogs() {
     setActionPending(true);
@@ -129,6 +158,12 @@ export function App() {
   function closeDialog() {
     setDialogOpen(false);
     setEditingRule(null);
+  }
+
+  function closeCloseDialog() {
+    if (!closeActionPending) {
+      setCloseDialogOpen(false);
+    }
   }
 
   async function handleSubmitRule(input: RuleInput) {
@@ -202,6 +237,34 @@ export function App() {
       addAppLog("error", `删除规则失败：${message}`);
     } finally {
       setActionPending(false);
+    }
+  }
+
+  async function handleHideToTray() {
+    setCloseActionPending(true);
+    try {
+      await hideToTray();
+      setCloseDialogOpen(false);
+      addAppLog("info", "已隐藏到系统托盘");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActionError(message);
+      addAppLog("error", `隐藏到托盘失败：${message}`);
+    } finally {
+      setCloseActionPending(false);
+    }
+  }
+
+  async function handleExitApplication() {
+    setCloseActionPending(true);
+    try {
+      addAppLog("info", "正在退出应用");
+      await exitApplication();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActionError(message);
+      addAppLog("error", `退出应用失败：${message}`);
+      setCloseActionPending(false);
     }
   }
 
@@ -335,6 +398,13 @@ export function App() {
         onClose={closeDialog}
         onSubmit={handleSubmitRule}
         open={dialogOpen}
+      />
+      <CloseToTrayDialog
+        busy={closeActionPending}
+        onCancel={closeCloseDialog}
+        onExitApplication={handleExitApplication}
+        onHideToTray={handleHideToTray}
+        open={closeDialogOpen}
       />
     </main>
   );

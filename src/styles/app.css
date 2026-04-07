@@ -52,14 +52,14 @@ body {
 .log-panel,
 .dialog-card {
   scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) transparent;
+  scrollbar-color: rgba(100, 116, 139, 0.28) transparent;
 }
 
 .app-main::-webkit-scrollbar,
 .log-panel::-webkit-scrollbar,
 .dialog-card::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 .app-main::-webkit-scrollbar-track,
@@ -72,18 +72,27 @@ body {
 .app-main::-webkit-scrollbar-thumb,
 .log-panel::-webkit-scrollbar-thumb,
 .dialog-card::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(148, 163, 184, 0.82), rgba(100, 116, 139, 0.72));
-  border: 2px solid transparent;
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.34), rgba(100, 116, 139, 0.26));
+  border: 1px solid transparent;
   border-radius: 999px;
   background-clip: padding-box;
   min-height: 44px;
+  transition: background 140ms ease;
+}
+
+.app-main:hover::-webkit-scrollbar-thumb,
+.log-panel:hover::-webkit-scrollbar-thumb,
+.dialog-card:hover::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.72), rgba(100, 116, 139, 0.6));
+  border: 1px solid transparent;
+  background-clip: padding-box;
 }
 
 .app-main::-webkit-scrollbar-thumb:hover,
 .log-panel::-webkit-scrollbar-thumb:hover,
 .dialog-card::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, rgba(100, 116, 139, 0.92), rgba(71, 85, 105, 0.84));
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   background-clip: padding-box;
 }
 
@@ -768,6 +777,22 @@ textarea {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.close-to-tray-dialog {
+  width: min(520px, 100%);
+}
+
+.close-to-tray-body {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  color: #334155;
+  line-height: 1.7;
+}
+
+.close-to-tray-body p {
+  margin: 0;
 }
 
 .ghost-button,

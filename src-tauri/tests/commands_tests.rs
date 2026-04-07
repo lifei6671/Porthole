@@ -16,8 +16,12 @@ pub mod support_job_object;
 #[path = "../src/support/pid_file.rs"]
 pub mod support_pid_file;
 
+#[path = "../src/support/lifecycle.rs"]
+pub mod support_lifecycle;
+
 mod support {
     pub use crate::support_job_object as job_object;
+    pub use crate::support_lifecycle as lifecycle;
     pub use crate::support_paths as paths;
     pub use crate::support_pid_file as pid_file;
 }
