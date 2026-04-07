@@ -126,7 +126,7 @@
 - [x] Task 3 完成：校验器与 `gost.yaml` 渲染
 - [x] Task 4 完成：`gost` 进程管理与运行态
 - [x] Task 5 完成：Tauri Command 与事件推送
-- [ ] Task 6 完成：前端骨架与规则列表
+- [x] Task 6 完成：前端骨架与规则列表
 - [ ] Task 7 完成：规则编辑、日志与状态 UI
 - [ ] Task 8 完成：端到端验证与文档收尾
 
@@ -375,27 +375,32 @@ cargo test --test commands_tests -- --nocapture
 
 ### Task 6: 前端骨架与规则列表
 
-**任务状态：** `- [ ] 未完成`
+**任务状态：** `- [x] 已完成`
 
 **Files:**
 - Create: `src/components/app-toolbar.tsx`
 - Create: `src/components/rule-list.tsx`
 - Create: `src/components/status-bar.tsx`
-- Create: `src/hooks/use-rules.ts`
-- Create: `src/lib/api.ts`
-- Create: `src/lib/types.ts`
-- Create: `src/styles/app.css`
+- Modify: `src/hooks/use-rules.ts`
+- Modify: `src/hooks/use-runtime-events.ts`
+- Modify: `src/lib/api.ts`
+- Modify: `src/lib/types.ts`
+- Modify: `src/styles/app.css`
 - Create: `src/__tests__/rule-list.test.tsx`
+- Create: `src/test/setup.ts`
 - Modify: `src/App.tsx`
-- Modify: `src/main.tsx`
+- Modify: `package.json`
+- Modify: `package-lock.json`
+- Modify: `vite.config.ts`
+- Modify: `tsconfig.json`
 - Modify: [docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md](/home/lifei6671/src/github.com/lifei6671/Porthole/docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md)
 
-- [ ] Step 1: 搭建页面三段式布局，包含顶部工具栏、规则列表、底部状态栏/日志预留区
-- [ ] Step 2: 通过 `list_rules()` 拉取规则并在列表展示字段：名称、协议、监听、目标、默认启用、运行状态、操作
-- [ ] Step 3: 实现顶部工具栏按钮：新增规则、启动全部、停止全部、刷新状态
-- [ ] Step 4: 实现列表级空状态与错误状态展示
-- [ ] Step 5: 编写前端测试，验证列表渲染和按钮交互
-- [ ] Step 6: 执行前端测试
+- [x] Step 1: 搭建页面三段式布局，包含顶部工具栏、规则列表、底部状态栏/日志预留区
+- [x] Step 2: 通过 `list_rules()` 拉取规则并在列表展示字段：名称、协议、监听、目标、默认启用、运行状态、操作
+- [x] Step 3: 实现顶部工具栏按钮：新增规则、启动全部、停止全部、刷新状态
+- [x] Step 4: 实现列表级空状态与错误状态展示
+- [x] Step 5: 编写前端测试，验证列表渲染和按钮交互
+- [x] Step 6: 执行前端测试
 
 **Run:**
 
@@ -408,7 +413,7 @@ npm run test -- rule-list
 - 列表测试通过
 - 页面可渲染空规则与已有规则两类状态
 
-- [ ] Step 7: 回写本计划文档，标记 Task 6 已完成并记录测试结果
+- [x] Step 7: 回写本计划文档，标记 Task 6 已完成并记录测试结果
 
 **Verification Criteria:**
 
@@ -568,3 +573,7 @@ npm run tauri build
   - 验证：`cd src-tauri && cargo fmt --all && cargo test --test commands_tests -- --nocapture`，`cd src-tauri && cargo test --tests -- --nocapture`，`npm run build`
   - 结果：`PASS`
   - 说明：完成 Tauri 命令层、运行态事件桥接与前端快照初始化链路，新增 `commands_tests.rs` 覆盖规则 CRUD、运行命令、日志清理与进程异常退出事件，前端已通过 `get_runtime_status` + 事件监听展示实时状态
+- 2026-04-07 Task 6 完成
+  - 验证：`npm run test -- rule-list`，`npm run build`
+  - 结果：`PASS`
+  - 说明：完成三段式前端骨架拆分，新增工具栏、规则列表、状态栏组件，并接入全局启停与刷新交互；补充 `vitest + Testing Library` 测试基建后，`rule-list` 测试覆盖空状态、规则渲染和工具栏按钮交互

@@ -8,6 +8,13 @@ export function useRules() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  async function refresh() {
+    const nextRules = await listRules();
+    setRules(nextRules);
+    setError(null);
+    return nextRules;
+  }
+
   useEffect(() => {
     let disposed = false;
     let unlisten: (() => void) | undefined;
@@ -15,7 +22,7 @@ export function useRules() {
     async function bootstrap() {
       try {
         const [initialRules, detach] = await Promise.all([
-          listRules(),
+          refresh(),
           listen<RulesChangedPayload>(rulesChangedEvent, (event) => {
             setRules(event.payload.rules);
           }),
@@ -49,5 +56,6 @@ export function useRules() {
     rules,
     loading,
     error,
+    refresh,
   };
 }

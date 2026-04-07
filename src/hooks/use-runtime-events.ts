@@ -5,6 +5,8 @@ import {
   logsAppendedEvent,
   processExitedEvent,
   runtimeChangedEvent,
+  startAllEnabledRules,
+  stopAllRules,
   type LogsAppendedPayload,
   type ProcessExitedPayload,
   type RuntimeChangedPayload,
@@ -20,6 +22,24 @@ export function useRuntimeEvents() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  async function refresh() {
+    const snapshot = await getRuntimeStatus();
+    setRuntime(snapshot.runtime);
+    setLogs(snapshot.logs);
+    setError(null);
+    return snapshot;
+  }
+
+  async function startAll() {
+    await startAllEnabledRules();
+    await refresh();
+  }
+
+  async function stopAll() {
+    await stopAllRules();
+    await refresh();
+  }
+
   useEffect(() => {
     let disposed = false;
     const unlisteners: Array<() => void> = [];
@@ -28,7 +48,7 @@ export function useRuntimeEvents() {
       try {
         const [snapshot, runtimeUnlisten, logsUnlisten, exitUnlisten] =
           await Promise.all([
-            getRuntimeStatus(),
+            refresh(),
             listen<RuntimeChangedPayload>(runtimeChangedEvent, (event) => {
               setRuntime(event.payload.runtime);
             }),
@@ -79,6 +99,9 @@ export function useRuntimeEvents() {
     processExitReason,
     loading,
     error,
+    refresh,
+    startAll,
+    stopAll,
     clearProcessExitReason() {
       setProcessExitReason(null);
     },

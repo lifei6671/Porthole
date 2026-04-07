@@ -1,24 +1,44 @@
 import { clearLogs } from "./lib/api";
+import { AppToolbar } from "./components/app-toolbar";
+import { RuleList } from "./components/rule-list";
+import { StatusBar } from "./components/status-bar";
 import { useRules } from "./hooks/use-rules";
 import { useRuntimeEvents } from "./hooks/use-runtime-events";
 
 export function App() {
-  const { rules, loading: rulesLoading, error: rulesError } = useRules();
+  const {
+    rules,
+    loading: rulesLoading,
+    error: rulesError,
+    refresh: refreshRules,
+  } = useRules();
   const {
     runtime,
     logs,
     processExitReason,
     loading: runtimeLoading,
     error: runtimeError,
+    refresh: refreshRuntime,
+    startAll,
+    stopAll,
     clearLocalLogs,
     clearProcessExitReason,
   } = useRuntimeEvents();
 
   const activeRuleCount = runtime?.active_rule_ids.length ?? 0;
+  const busy = rulesLoading || runtimeLoading;
 
   async function handleClearLogs() {
     await clearLogs();
     clearLocalLogs();
+  }
+
+  async function handleRefresh() {
+    await Promise.all([refreshRules(), refreshRuntime()]);
+  }
+
+  function handleAddRule() {
+    window.alert("规则弹窗将在 Task 7 实现。");
   }
 
   return (
@@ -45,41 +65,22 @@ export function App() {
           </article>
         </div>
       </header>
+
+      <AppToolbar
+        busy={busy}
+        onAddRule={handleAddRule}
+        onRefresh={handleRefresh}
+        onStartAll={startAll}
+        onStopAll={stopAll}
+      />
+
       <section className="workspace" aria-label="Application workspace">
-        <section className="panel">
-          <div className="panel-header">
-            <div>
-              <h2>规则快照</h2>
-              <p>前端启动时拉取一次快照，后续依赖事件刷新。</p>
-            </div>
-          </div>
-          {rulesLoading ? <p className="placeholder">正在加载规则...</p> : null}
-          {rulesError ? <p className="error-text">{rulesError}</p> : null}
-          {!rulesLoading && !rules.length ? (
-            <p className="placeholder">当前还没有规则。</p>
-          ) : null}
-          {rules.length ? (
-            <div className="rule-list">
-              {rules.map((rule) => (
-                <article className="rule-card" key={rule.id}>
-                  <div className="rule-card-header">
-                    <strong>{rule.name}</strong>
-                    <span className={`badge badge-${rule.protocol}`}>
-                      {rule.protocol.toUpperCase()}
-                    </span>
-                  </div>
-                  <p className="rule-route">
-                    {rule.listen_host}:{rule.listen_port} → {rule.target_host}:
-                    {rule.target_port}
-                  </p>
-                  <p className="rule-meta">
-                    默认启用：{rule.enabled ? "是" : "否"} | ID: {rule.id}
-                  </p>
-                </article>
-              ))}
-            </div>
-          ) : null}
-        </section>
+        <RuleList
+          error={rulesError}
+          loading={rulesLoading}
+          rules={rules}
+          runtime={runtime}
+        />
 
         <section className="panel">
           <div className="panel-header">
@@ -120,7 +121,10 @@ export function App() {
           <div className="log-panel">
             {logs.length ? (
               logs.slice(-12).map((entry) => (
-                <article className="log-entry" key={`${entry.observed_at}-${entry.message}`}>
+                <article
+                  className="log-entry"
+                  key={`${entry.observed_at}-${entry.message}`}
+                >
                   <span className={`log-source log-source-${entry.source.toLowerCase()}`}>
                     {entry.source}
                   </span>
@@ -134,6 +138,12 @@ export function App() {
           </div>
         </section>
       </section>
+
+      <StatusBar
+        lastError={runtime?.last_error?.summary ?? runtimeError}
+        notice={processExitReason}
+        runtime={runtime}
+      />
     </main>
   );
 }

@@ -21,6 +21,14 @@ export async function getRuntimeStatus(): Promise<RuntimeStatusPayload> {
   return invoke<RuntimeStatusPayload>("get_runtime_status");
 }
 
+export async function startAllEnabledRules() {
+  return invoke("start_all_enabled_rules");
+}
+
+export async function stopAllRules() {
+  return invoke("stop_all_rules");
+}
+
 export async function clearLogs(): Promise<void> {
   await invoke("clear_logs");
 }
