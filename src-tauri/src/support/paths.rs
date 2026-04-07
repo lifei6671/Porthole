@@ -24,10 +24,7 @@ impl AppPaths {
 
     pub fn from_app_handle(app_handle: &tauri::AppHandle) -> io::Result<Self> {
         let data_dir = app_handle.path().app_data_dir().map_err(|err| {
-            io::Error::new(
-                io::ErrorKind::Other,
-                format!("获取应用数据目录失败: {err}"),
-            )
+            io::Error::new(io::ErrorKind::Other, format!("获取应用数据目录失败: {err}"))
         })?;
         Ok(Self::new(data_dir))
     }

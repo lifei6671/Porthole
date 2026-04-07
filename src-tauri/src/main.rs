@@ -2,7 +2,9 @@ mod app_state;
 mod model;
 mod service;
 mod support {
+    pub mod job_object;
     pub mod paths;
+    pub mod pid_file;
 }
 
 use app_state::AppState;

@@ -36,9 +36,10 @@ impl RuleStore {
     }
 
     pub fn load(&self) -> Result<RuleSet, RuleStoreError> {
-        self.inner.paths.ensure_data_dir().map_err(|err| {
-            RuleStoreError::Io("创建应用数据目录失败".to_string(), err)
-        })?;
+        self.inner
+            .paths
+            .ensure_data_dir()
+            .map_err(|err| RuleStoreError::Io("创建应用数据目录失败".to_string(), err))?;
 
         let rules_path = self.inner.paths.rules_file();
         if !rules_path.exists() {
@@ -48,10 +49,7 @@ impl RuleStore {
         }
 
         let contents = fs::read_to_string(rules_path).map_err(|err| {
-            RuleStoreError::Io(
-                format!("读取规则文件失败: {}", rules_path.display()),
-                err,
-            )
+            RuleStoreError::Io(format!("读取规则文件失败: {}", rules_path.display()), err)
         })?;
 
         if contents.trim().is_empty() {
@@ -61,10 +59,7 @@ impl RuleStore {
         }
 
         toml::from_str(&contents).map_err(|err| {
-            RuleStoreError::TomlDecode(
-                format!("解析规则文件失败: {}", rules_path.display()),
-                err,
-            )
+            RuleStoreError::TomlDecode(format!("解析规则文件失败: {}", rules_path.display()), err)
         })
     }
 
@@ -79,15 +74,15 @@ impl RuleStore {
             .lock()
             .map_err(|_| RuleStoreError::LockPoisoned)?;
 
-        self.inner.paths.ensure_data_dir().map_err(|err| {
-            RuleStoreError::Io("创建应用数据目录失败".to_string(), err)
-        })?;
+        self.inner
+            .paths
+            .ensure_data_dir()
+            .map_err(|err| RuleStoreError::Io("创建应用数据目录失败".to_string(), err))?;
 
         let rules_path = self.inner.paths.rules_file();
         let temp_path = temporary_rules_path(rules_path);
-        let contents = toml::to_string_pretty(snapshot).map_err(|err| {
-            RuleStoreError::TomlEncode("序列化规则配置失败".to_string(), err)
-        })?;
+        let contents = toml::to_string_pretty(snapshot)
+            .map_err(|err| RuleStoreError::TomlEncode("序列化规则配置失败".to_string(), err))?;
 
         {
             let mut file = fs::File::create(&temp_path).map_err(|err| {

@@ -123,7 +123,7 @@
 
 - [x] Task 1 完成：项目脚手架与 Sidecar 打包
 - [x] Task 2 完成：Rust 领域模型与持久化
-- [ ] Task 3 完成：校验器与 `gost.yaml` 渲染
+- [x] Task 3 完成：校验器与 `gost.yaml` 渲染
 - [ ] Task 4 完成：`gost` 进程管理与运行态
 - [ ] Task 5 完成：Tauri Command 与事件推送
 - [ ] Task 6 完成：前端骨架与规则列表
@@ -241,7 +241,7 @@ cargo test --test rule_store_tests -- --nocapture
 
 ### Task 3: 校验器与 `gost.yaml` 渲染
 
-**任务状态：** `- [ ] 未完成`
+**任务状态：** `- [x] 已完成`
 
 **Files:**
 - Create: `src-tauri/src/service/validator.rs`
@@ -251,13 +251,13 @@ cargo test --test rule_store_tests -- --nocapture
 - Modify: `src-tauri/src/model/rule.rs`
 - Modify: [docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md](/home/lifei6671/src/github.com/lifei6671/Porthole/docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md)
 
-- [ ] Step 1: 实现地址格式化逻辑，确保 IPv4 输出 `host:port`，IPv6 输出 `[host]:port`
-- [ ] Step 2: 实现规则保存前校验，覆盖协议合法性、端口范围、ID 唯一性、监听冲突检测
-- [ ] Step 3: 实现启动前校验，覆盖运行集合为空、sidecar 缺失、渲染失败、监听冲突等场景
-- [ ] Step 4: 实现 `gost.yaml` 渲染器，支持 TCP 和 UDP 两类 service 输出
-- [ ] Step 5: UDP 渲染默认不写高级 metadata 字段，显式依赖 `gost` 默认值
-- [ ] Step 6: 编写渲染测试，覆盖 `IPv4 -> IPv4`、`IPv6 -> IPv6`、`IPv4 -> IPv6`、`IPv6 -> IPv4`
-- [ ] Step 7: 执行 Rust 单元测试
+- [x] Step 1: 实现地址格式化逻辑，确保 IPv4 输出 `host:port`，IPv6 输出 `[host]:port`
+- [x] Step 2: 实现规则保存前校验，覆盖协议合法性、端口范围、ID 唯一性、监听冲突检测
+- [x] Step 3: 实现启动前校验，覆盖运行集合为空、sidecar 缺失、渲染失败、监听冲突等场景
+- [x] Step 4: 实现 `gost.yaml` 渲染器，支持 TCP 和 UDP 两类 service 输出
+- [x] Step 5: UDP 渲染默认不写高级 metadata 字段，显式依赖 `gost` 默认值
+- [x] Step 6: 编写渲染测试，覆盖 `IPv4 -> IPv4`、`IPv6 -> IPv6`、`IPv4 -> IPv6`、`IPv6 -> IPv4`
+- [x] Step 7: 执行 Rust 单元测试
 
 **Run:**
 
@@ -272,7 +272,7 @@ cargo test --test gost_renderer_tests -- --nocapture
 - 生成的 `gost.yaml` 与设计约束一致
 - TCP / UDP 规则都能输出合法配置
 
-- [ ] Step 8: 回写本计划文档，标记 Task 3 已完成并记录测试结果
+- [x] Step 8: 回写本计划文档，标记 Task 3 已完成并记录测试结果
 
 **Verification Criteria:**
 
@@ -286,6 +286,9 @@ cargo test --test gost_renderer_tests -- --nocapture
 ### Task 4: `gost` 进程管理与运行态
 
 **任务状态：** `- [ ] 未完成`
+
+> 当前切片仅落地 `support/job_object.rs` 与 `support/pid_file.rs`，供后续
+> `gost_process.rs` 直接接入；本任务整体仍保持未完成。
 
 **Files:**
 - Create: `src-tauri/src/service/gost_process.rs`
@@ -556,3 +559,7 @@ npm run tauri build
   - 验证：`cd src-tauri && cargo test --test rule_store_tests -- --nocapture`
   - 结果：`PASS`
   - 说明：完成规则模型、运行态模型、应用数据路径与 `RuleStore` 持久化基础，修正测试模块路径与 `tauri::Manager` 导入后，4 个 `rule_store` 测试全部通过
+- 2026-04-07 Task 3 完成
+  - 验证：`cd src-tauri && cargo test --test validator_tests -- --nocapture`，`cd src-tauri && cargo test --test gost_renderer_tests -- --nocapture`
+  - 结果：`PASS`
+  - 说明：补齐规则保存前/启动前校验与 `gost.yaml` 渲染，修复 `Protocol` 缺少 `Hash` 派生导致的编译错误后，2 组 Task 3 单测共 10 条全部通过
