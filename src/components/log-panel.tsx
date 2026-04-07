@@ -7,9 +7,10 @@ export function normalizeLogLevel(entry: UILogEntry) {
 interface LogPanelProps {
   entries: UILogEntry[];
   onClear: () => void;
+  maxEntries?: number;
 }
 
-export function LogPanel({ entries, onClear }: LogPanelProps) {
+export function LogPanel({ entries, maxEntries = 14, onClear }: LogPanelProps) {
   return (
     <section className="panel" aria-label="Log panel">
       <div className="panel-header">
@@ -24,7 +25,7 @@ export function LogPanel({ entries, onClear }: LogPanelProps) {
 
       <div className="log-panel">
         {entries.length ? (
-          entries.slice(-14).map((entry) => (
+          entries.slice(-maxEntries).map((entry) => (
             <article className="log-entry" key={entry.id}>
               <span className={`log-tag log-tag-${entry.source}`}>{entry.source}</span>
               <span className={`log-tag log-tag-${entry.level}`}>

@@ -101,13 +101,18 @@ fn build_state(
     let manager =
         GostProcessManager::new_with_hooks(paths.clone(), launcher, Arc::new(|_, _, _| Ok(())));
 
-    let state = AppState::new(
+    let state = AppState::new_with_api_binding_provider(
         paths,
         rule_store,
         manager.clone(),
         emitter.clone(),
         PathBuf::from("/bin/sh"),
-        "http://127.0.0.1:18080/api/config/services",
+        Arc::new(|| {
+            Ok(app_state::GostApiBinding {
+                listen_addr: "127.0.0.1:24680?pathPrefix=/api".to_string(),
+                probe_url: "http://127.0.0.1:24680/api/config/services".to_string(),
+            })
+        }),
     );
 
     spawn_runtime_event_bridge(manager, emitter, Duration::from_millis(50));

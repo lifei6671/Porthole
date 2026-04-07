@@ -1,5 +1,8 @@
 use std::collections::BTreeSet;
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::thread;
 
 #[cfg(target_os = "windows")]
 use std::fs;
@@ -25,7 +28,7 @@ pub struct AppState {
     firewall_manager: FirewallManager,
     runtime_events: RuntimeEventEmitter,
     gost_sidecar_path: PathBuf,
-    gost_api_probe_url: String,
+    gost_api_binding_provider: Arc<dyn Fn() -> Result<GostApiBinding, AppStateError> + Send + Sync>,
 }
 
 impl AppState {
@@ -35,7 +38,26 @@ impl AppState {
         gost_process: GostProcessManager,
         runtime_events: RuntimeEventEmitter,
         gost_sidecar_path: PathBuf,
-        gost_api_probe_url: impl Into<String>,
+    ) -> Self {
+        Self::new_with_api_binding_provider(
+            paths,
+            rule_store,
+            gost_process,
+            runtime_events,
+            gost_sidecar_path,
+            Arc::new(allocate_gost_api_binding),
+        )
+    }
+
+    pub fn new_with_api_binding_provider(
+        paths: AppPaths,
+        rule_store: RuleStore,
+        gost_process: GostProcessManager,
+        runtime_events: RuntimeEventEmitter,
+        gost_sidecar_path: PathBuf,
+        gost_api_binding_provider: Arc<
+            dyn Fn() -> Result<GostApiBinding, AppStateError> + Send + Sync,
+        >,
     ) -> Self {
         let firewall_manager = FirewallManager::new(paths.clone());
         Self {
@@ -45,7 +67,7 @@ impl AppState {
             firewall_manager,
             runtime_events,
             gost_sidecar_path,
-            gost_api_probe_url: gost_api_probe_url.into(),
+            gost_api_binding_provider,
         }
     }
 
@@ -114,7 +136,12 @@ impl AppState {
 
     pub fn delete_rule(&self, rule_id: &str) -> Result<(), AppStateError> {
         let mut snapshot = self.rule_store.load()?;
-        let Some(removed_rule) = snapshot.rules.iter().find(|rule| rule.id == rule_id).cloned() else {
+        let Some(removed_rule) = snapshot
+            .rules
+            .iter()
+            .find(|rule| rule.id == rule_id)
+            .cloned()
+        else {
             return Err(AppStateError::NotFound(format!("未找到规则: {rule_id}")));
         };
         snapshot.rules.retain(|rule| rule.id != rule_id);
@@ -203,11 +230,12 @@ impl AppState {
         let validated = validate_before_start(snapshot, &active_ids, &gost_sidecar_path)?;
         std::fs::write(self.paths.gost_config_file(), &validated.rendered_config)
             .map_err(|err| AppStateError::Io("写入 gost.yaml 失败".to_string(), err))?;
+        let api_binding = (self.gost_api_binding_provider)()?;
 
         let request = GostLaunchRequest::new(
             gost_sidecar_path,
-            build_gost_args(self.paths.gost_config_file()),
-            self.gost_api_probe_url.clone(),
+            build_gost_args(self.paths.gost_config_file(), &api_binding.listen_addr),
+            api_binding.probe_url,
             active_ids.clone(),
         );
 
@@ -223,33 +251,42 @@ impl AppState {
     }
 
     fn sync_firewall_rules(&self, rules: &[Rule], active_ids: &BTreeSet<String>) {
-        match self.firewall_manager.sync_rules(rules, active_ids) {
+        let firewall_manager = self.firewall_manager.clone();
+        let gost_process = self.gost_process.clone();
+        let rules = rules.to_vec();
+        let active_ids = active_ids.clone();
+
+        thread::spawn(move || match firewall_manager.sync_rules(&rules, &active_ids) {
             Ok(messages) => {
                 for message in messages {
-                    self.gost_process.append_app_info_log(message);
+                    gost_process.append_app_info_log(message);
                 }
             }
             Err(err) => {
-                self.gost_process.append_app_error_log(format!(
+                gost_process.append_app_error_log(format!(
                     "同步 Windows 防火墙规则失败，但端口转发仍可继续运行：{err}"
                 ));
             }
-        }
+        });
     }
 
     fn sync_removed_firewall_rule(&self, rule: &Rule) {
-        match self.firewall_manager.remove_rule(rule) {
+        let firewall_manager = self.firewall_manager.clone();
+        let gost_process = self.gost_process.clone();
+        let rule = rule.clone();
+
+        thread::spawn(move || match firewall_manager.remove_rule(&rule) {
             Ok(messages) => {
                 for message in messages {
-                    self.gost_process.append_app_info_log(message);
+                    gost_process.append_app_info_log(message);
                 }
             }
             Err(err) => {
-                self.gost_process.append_app_error_log(format!(
+                gost_process.append_app_error_log(format!(
                     "清理 Windows 防火墙规则失败：{err}"
                 ));
             }
-        }
+        });
     }
 
     fn prepare_gost_sidecar_path(&self) -> Result<PathBuf, AppStateError> {
@@ -365,8 +402,37 @@ impl From<GostProcessError> for AppStateError {
     }
 }
 
-fn build_gost_args(config_path: &Path) -> Vec<String> {
-    vec!["-C".to_string(), config_path.display().to_string()]
+fn build_gost_args(config_path: &Path, api_listen_addr: &str) -> Vec<String> {
+    vec![
+        "-C".to_string(),
+        config_path.display().to_string(),
+        "-api".to_string(),
+        api_listen_addr.to_string(),
+    ]
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct GostApiBinding {
+    pub(crate) listen_addr: String,
+    pub(crate) probe_url: String,
+}
+
+fn build_gost_api_binding(port: u16) -> GostApiBinding {
+    GostApiBinding {
+        listen_addr: format!("127.0.0.1:{port}?pathPrefix=/api"),
+        probe_url: format!("http://127.0.0.1:{port}/api/config/services"),
+    }
+}
+
+fn allocate_gost_api_binding() -> Result<GostApiBinding, AppStateError> {
+    let listener = TcpListener::bind(("127.0.0.1", 0))
+        .map_err(|err| AppStateError::Io("分配 gost API 本地端口失败".to_string(), err))?;
+    let port = listener
+        .local_addr()
+        .map_err(|err| AppStateError::Io("读取 gost API 本地端口失败".to_string(), err))?
+        .port();
+    drop(listener);
+    Ok(build_gost_api_binding(port))
 }
 
 fn generate_rule_id() -> String {
@@ -374,4 +440,36 @@ fn generate_rule_id() -> String {
         "rule-{}",
         Utc::now().timestamp_nanos_opt().unwrap_or_default()
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{build_gost_api_binding, build_gost_args};
+    use std::path::Path;
+
+    #[test]
+    fn build_gost_args_enables_local_api_with_prefix() {
+        let args = build_gost_args(Path::new("gost.yaml"), "127.0.0.1:24680?pathPrefix=/api");
+
+        assert_eq!(
+            args,
+            vec![
+                "-C".to_string(),
+                "gost.yaml".to_string(),
+                "-api".to_string(),
+                "127.0.0.1:24680?pathPrefix=/api".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn build_gost_api_binding_uses_same_port_for_probe_and_listen_addr() {
+        let binding = build_gost_api_binding(24680);
+
+        assert_eq!(binding.listen_addr, "127.0.0.1:24680?pathPrefix=/api");
+        assert_eq!(
+            binding.probe_url,
+            "http://127.0.0.1:24680/api/config/services"
+        );
+    }
 }

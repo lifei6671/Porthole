@@ -103,12 +103,12 @@
         │   └── runtime.rs
         ├── service/
         │   ├── mod.rs
+        │   ├── firewall.rs
         │   ├── rule_store.rs
         │   ├── validator.rs
         │   ├── gost_renderer.rs
         │   ├── gost_process.rs
         │   ├── runtime_events.rs
-        │   └── firewall_notice.rs
         └── support/
             ├── paths.rs
             ├── job_object.rs
@@ -451,7 +451,7 @@ npm run test -- rule-list
 - [x] Step 4: 实现单条规则操作按钮：启动、停止、编辑、删除
 - [x] Step 5: 实现底部日志面板，展示时间、来源、级别、内容，并限制内存缓存条数
 - [x] Step 6: 实现状态条，展示 `gost` 进程状态、当前运行规则数、最近错误
-- [x] Step 7: 增加防火墙提示文案，当监听地址不是回环地址时，提示用户可能需要手动放行 Windows 防火墙
+- [x] Step 7: 增加防火墙提示文案，当监听地址不是回环地址时，提示用户启动规则时会自动申请放行 Windows 防火墙
 - [x] Step 8: 编写前端测试，覆盖弹窗提交流程、日志展示、状态更新
 - [x] Step 9: 执行前端测试
 
@@ -465,7 +465,7 @@ npm run test -- log-panel
 **Expected:**
 
 - 弹窗与日志测试通过
-- 非回环监听地址会出现防火墙提示
+- 非回环监听地址会出现自动防火墙放行提示
 
 - [x] Step 10: 回写本计划文档，标记 Task 7 已完成并记录测试结果
 
@@ -552,7 +552,7 @@ npm run tauri build
 - Windows Job Object 若处理不当，会留下端口占用的残留进程
 - `gost` API 探活依赖本地回环地址，不能暴露到公网接口
 - 单进程重载存在短暂中断窗口，这是 MVP 已知代价
-- Windows 防火墙可能让局域网访问失败，MVP 只提示不自动提权修改系统配置
+- Windows 防火墙自动同步依赖管理员权限，UAC 被拒绝时只能保持转发运行并记录失败日志
 
 ---
 
@@ -586,3 +586,7 @@ npm run tauri build
   - 验证：`npm run test -- rule-dialog`，`npm run test -- log-panel`，`npm run test`，`npm run build`
   - 结果：`PASS`
   - 说明：完成规则弹窗、前端校验、单条规则操作、`app/gost` 混合日志面板、状态条与防火墙提示；新增 `rule-dialog`/`log-panel` 测试覆盖提交流程、日志展示和状态提示，前端全量测试 7 条全部通过
+- 2026-04-07 补充变更：Windows 防火墙规则自动同步
+  - 验证：`cd src-tauri && cargo test --tests -- --nocapture`，`cd src-tauri && cargo check`，`npm run test`，`npm run build`，`make build-win`
+  - 结果：`PASS`
+  - 说明：新增 `firewall.rs`，实现 Windows 下按协议与端口精确创建/删除入站规则，启动非回环监听规则时自动申请 UAC 提权同步防火墙；停止、删除规则时自动清理规则，失败仅记录 `app` 日志而不阻断端口转发

@@ -11,6 +11,11 @@ use crate::support::paths::AppPaths;
 use std::fs;
 #[cfg(target_os = "windows")]
 use std::process::{Command, Stdio};
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 type FirewallRunner =
     dyn Fn(&FirewallExecution) -> Result<(), FirewallError> + Send + Sync + 'static;
@@ -42,7 +47,13 @@ impl FirewallSyncPlan {
             let summary = self
                 .add_rules
                 .iter()
-                .map(|rule| format!("{} {}", rule.protocol.as_str().to_uppercase(), rule.local_port))
+                .map(|rule| {
+                    format!(
+                        "{} {}",
+                        rule.protocol.as_str().to_uppercase(),
+                        rule.local_port
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             messages.push(format!("已同步 Windows 防火墙放行规则：{summary}"));
@@ -60,9 +71,8 @@ impl FirewallSyncPlan {
 
     #[cfg(any(test, target_os = "windows"))]
     pub fn to_powershell_script(&self) -> String {
-        let mut script = String::from(
-            "$ErrorActionPreference = 'Stop'\nSet-StrictMode -Version Latest\n",
-        );
+        let mut script =
+            String::from("$ErrorActionPreference = 'Stop'\nSet-StrictMode -Version Latest\n");
 
         for rule_name in &self.remove_rule_names {
             let escaped = escape_powershell_single_quoted(rule_name);
@@ -170,9 +180,8 @@ impl FirewallManager {
                 .map_err(|err| FirewallError::Io("创建应用数据目录失败".to_string(), err))?;
 
             let script_path = self.paths.data_dir().join("firewall-sync.ps1");
-            fs::write(&script_path, plan.to_powershell_script()).map_err(|err| {
-                FirewallError::Io("写入 Windows 防火墙脚本失败".to_string(), err)
-            })?;
+            fs::write(&script_path, plan.to_powershell_script())
+                .map_err(|err| FirewallError::Io("写入 Windows 防火墙脚本失败".to_string(), err))?;
 
             let elevated = (self.elevation_checker)()?;
             let execution = FirewallExecution {
@@ -238,7 +247,7 @@ fn escape_powershell_single_quoted(value: &str) -> String {
 
 #[cfg(target_os = "windows")]
 fn default_elevation_checker() -> Result<bool, FirewallError> {
-    let status = Command::new("powershell.exe")
+    let status = hidden_powershell_command()
         .args([
             "-NoProfile",
             "-NonInteractive",
@@ -272,7 +281,7 @@ fn default_firewall_runner(execution: &FirewallExecution) -> Result<(), Firewall
         let command = format!(
             "$proc = Start-Process -FilePath 'powershell.exe' -Verb RunAs -WindowStyle Hidden -Wait -PassThru -ArgumentList {direct_args}; exit $proc.ExitCode"
         );
-        Command::new("powershell.exe")
+        hidden_powershell_command()
             .args([
                 "-NoProfile",
                 "-NonInteractive",
@@ -285,7 +294,7 @@ fn default_firewall_runner(execution: &FirewallExecution) -> Result<(), Firewall
             .stderr(Stdio::piped())
             .status()
     } else {
-        Command::new("powershell.exe")
+        hidden_powershell_command()
             .args([
                 "-NoProfile",
                 "-NonInteractive",
@@ -307,6 +316,13 @@ fn default_firewall_runner(execution: &FirewallExecution) -> Result<(), Firewall
             "同步 Windows 防火墙规则失败，退出码: {status}"
         )))
     }
+}
+
+#[cfg(target_os = "windows")]
+fn hidden_powershell_command() -> Command {
+    let mut command = Command::new("powershell.exe");
+    command.creation_flags(CREATE_NO_WINDOW);
+    command
 }
 
 #[cfg(not(target_os = "windows"))]

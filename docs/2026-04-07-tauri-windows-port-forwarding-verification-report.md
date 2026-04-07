@@ -15,6 +15,7 @@
 - 结果：`PASS`
 - 摘要：
   - `commands_tests`：6 通过
+  - `firewall_tests`：4 通过
   - `gost_process_tests`：7 通过
   - `gost_renderer_tests`：8 通过
   - `rule_store_tests`：7 通过
@@ -46,6 +47,16 @@
 - 当前阻塞：
   - 构建在下载 `https://github.com/tauri-apps/binary-releases/releases/download/apprun-old/AppRun-x86_64` 时长时间等待，当前未拿到完整成功退出结果
 
+### 2.5 Windows 交叉构建
+
+- 命令：`make build-win`
+- 结果：`PASS`
+- 摘要：
+  - 已生成 `bin/porthole.exe`
+  - 已同步 `bin/gost.exe`
+  - 已同步 `bin/WebView2Loader.dll`
+  - 当前 Windows 产物包含 sidecar 本地复制、隐藏子进程窗口、自动防火墙规则同步逻辑
+
 ## 3. 功能覆盖情况
 
 当前已完成的 MVP 前端/后端能力：
@@ -56,7 +67,9 @@
 - `rules.toml` 持久化
 - `gost.yaml` 渲染
 - `gost` 进程管理、PID 清理、日志采集、事件推送
-- 前端规则弹窗、即时校验、地址预览、日志面板、状态条、防火墙提示
+- Windows 下 sidecar 本地复制与黑色命令行隐藏
+- Windows 下按协议与端口自动添加 / 删除防火墙规则
+- 前端规则弹窗、即时校验、地址预览、日志面板、状态条、防火墙自动放行提示
 
 ## 4. 尚未完成的验证项
 
@@ -73,6 +86,13 @@
 - `UDP [::]:5354 -> 127.0.0.1:5353`
 - `UDP 0.0.0.0:5354 -> [::1]:5353`
 
+另外需补充以下 Windows 系统交互验证：
+
+- 启动非回环监听规则时，是否正确弹出 UAC
+- 确认 UAC 后，是否成功创建对应 `Porthole-*` 防火墙规则
+- 停止 / 删除规则后，防火墙规则是否被清理
+- 拒绝 UAC 后，端口转发是否仍继续运行且日志面板出现失败说明
+
 ### 4.2 完整 Tauri 打包退出
 
 - 需要确认 `npm run tauri build` 在当前环境是否能完整越过 `appimage` 下载阶段并正常退出
@@ -86,4 +106,5 @@
 - MVP 的核心代码与前端交互链路已经打通
 - Task 8 仍未完成，主要缺口是：
   - Windows 手工转发矩阵尚未执行
+  - Windows 防火墙自动同步与 UAC 交互尚未手工确认
   - `npm run tauri build` 在 `appimage` 下载阶段未完成最终退出验证

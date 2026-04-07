@@ -8,14 +8,16 @@ import {
   stopRule,
   updateRule,
 } from "./lib/api";
-import { AppToolbar } from "./components/app-toolbar";
-import { LogPanel } from "./components/log-panel";
+import { PageHeader } from "./components/page-header";
 import { RuleDialog } from "./components/rule-dialog";
-import { RuleList } from "./components/rule-list";
-import { StatusBar } from "./components/status-bar";
+import { Sidebar, type AppPage } from "./components/sidebar";
 import { useRules } from "./hooks/use-rules";
 import { useRuntimeEvents } from "./hooks/use-runtime-events";
 import type { ProcessLogEntry, Rule, RuleInput, UILogEntry } from "./lib/types";
+import { HomePage } from "./pages/home-page";
+import { LogsPage } from "./pages/logs-page";
+import { RulesPage } from "./pages/rules-page";
+import { SettingsPage } from "./pages/settings-page";
 
 const maxUILogEntries = 500;
 
@@ -79,9 +81,11 @@ export function App() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [appLogs, setAppLogs] = useState<UILogEntry[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<AppPage>("home");
+  const [actionPending, setActionPending] = useState(false);
 
   const activeRuleCount = runtime?.active_rule_ids.length ?? 0;
-  const busy = rulesLoading || runtimeLoading;
+  const busy = rulesLoading || runtimeLoading || actionPending;
   const mergedLogs = appLogs.concat(logs.map(toUILogEntry)).slice(-maxUILogEntries);
 
   function addAppLog(level: UILogEntry["level"], message: string) {
@@ -89,15 +93,25 @@ export function App() {
   }
 
   async function handleClearLogs() {
-    await clearLogs();
-    clearLocalLogs();
-    setAppLogs([]);
-    addAppLog("info", "日志已清空");
+    setActionPending(true);
+    try {
+      await clearLogs();
+      clearLocalLogs();
+      setAppLogs([]);
+      addAppLog("info", "日志已清空");
+    } finally {
+      setActionPending(false);
+    }
   }
 
   async function handleRefresh() {
-    await Promise.all([refreshRules(), refreshRuntime()]);
-    addAppLog("info", "已刷新规则和运行状态");
+    setActionPending(true);
+    try {
+      await Promise.all([refreshRules(), refreshRuntime()]);
+      addAppLog("info", "已刷新规则和运行状态");
+    } finally {
+      setActionPending(false);
+    }
   }
 
   function handleAddRule() {
@@ -119,6 +133,7 @@ export function App() {
 
   async function handleSubmitRule(input: RuleInput) {
     setActionError(null);
+    setActionPending(true);
 
     try {
       if (dialogMode === "create") {
@@ -135,10 +150,13 @@ export function App() {
       const message = error instanceof Error ? error.message : String(error);
       setActionError(message);
       addAppLog("error", `保存规则失败：${message}`);
+    } finally {
+      setActionPending(false);
     }
   }
 
   async function handleStartRule(ruleID: string) {
+    setActionPending(true);
     try {
       await startRule(ruleID);
       await refreshRuntime();
@@ -147,10 +165,13 @@ export function App() {
       const message = error instanceof Error ? error.message : String(error);
       setActionError(message);
       addAppLog("error", `启动规则失败：${message}`);
+    } finally {
+      setActionPending(false);
     }
   }
 
   async function handleStopRule(ruleID: string) {
+    setActionPending(true);
     try {
       await stopRule(ruleID);
       await refreshRuntime();
@@ -159,6 +180,8 @@ export function App() {
       const message = error instanceof Error ? error.message : String(error);
       setActionError(message);
       addAppLog("error", `停止规则失败：${message}`);
+    } finally {
+      setActionPending(false);
     }
   }
 
@@ -168,6 +191,7 @@ export function App() {
       return;
     }
 
+    setActionPending(true);
     try {
       await deleteRule(rule.id);
       await Promise.all([refreshRules(), refreshRuntime()]);
@@ -176,10 +200,13 @@ export function App() {
       const message = error instanceof Error ? error.message : String(error);
       setActionError(message);
       addAppLog("error", `删除规则失败：${message}`);
+    } finally {
+      setActionPending(false);
     }
   }
 
   async function handleStartAll() {
+    setActionPending(true);
     try {
       await startAll();
       addAppLog("info", "已执行启动全部");
@@ -187,10 +214,13 @@ export function App() {
       const message = error instanceof Error ? error.message : String(error);
       setActionError(message);
       addAppLog("error", `启动全部失败：${message}`);
+    } finally {
+      setActionPending(false);
     }
   }
 
   async function handleStopAll() {
+    setActionPending(true);
     try {
       await stopAll();
       addAppLog("info", "已执行停止全部");
@@ -198,77 +228,106 @@ export function App() {
       const message = error instanceof Error ? error.message : String(error);
       setActionError(message);
       addAppLog("error", `停止全部失败：${message}`);
+    } finally {
+      setActionPending(false);
     }
   }
 
-  return (
-    <main className="app-shell">
-      <header className="app-header">
-        <div>
-          <p className="eyebrow">Windows Port Forwarding MVP</p>
-          <h1 className="app-title">Porthole</h1>
-        </div>
-        <div className="header-metrics">
-          <article className="metric-card">
-            <span className="metric-label">进程状态</span>
-            <strong className="metric-value">
-              {runtime?.process_status ?? "loading"}
-            </strong>
-          </article>
-          <article className="metric-card">
-            <span className="metric-label">当前运行规则</span>
-            <strong className="metric-value">{activeRuleCount}</strong>
-          </article>
-          <article className="metric-card">
-            <span className="metric-label">已保存规则</span>
-            <strong className="metric-value">{rules.length}</strong>
-          </article>
-        </div>
-      </header>
+  const pageMeta: Record<AppPage, { title: string; description: string }> = {
+    home: {
+      title: "总览",
+      description: "查看当前运行状态、快捷操作和最近日志。",
+    },
+    rules: {
+      title: "规则",
+      description: "管理 TCP / UDP 端口转发规则，并对单条规则执行启停操作。",
+    },
+    logs: {
+      title: "日志",
+      description: "集中查看 app 与 gost 的运行日志，用于快速定位故障。",
+    },
+    settings: {
+      title: "设置",
+      description: "查看应用说明、运行策略和 Windows 防火墙相关提示。",
+    },
+  };
 
-      <AppToolbar
-        busy={busy}
-        onAddRule={handleAddRule}
-        onRefresh={handleRefresh}
-        onStartAll={handleStartAll}
-        onStopAll={handleStopAll}
-      />
-
-      <section className="workspace" aria-label="Application workspace">
-        <RuleList
-          error={rulesError}
-          loading={rulesLoading}
-          onDeleteRule={handleDeleteRule}
-          onEditRule={handleEditRule}
-          onStartRule={handleStartRule}
-          onStopRule={handleStopRule}
-          rules={rules}
-          runtime={runtime}
-        />
-
-        <LogPanel entries={mergedLogs} onClear={handleClearLogs} />
-      </section>
-
-      {(runtimeError || actionError) && (
-        <p className="error-banner">{actionError ?? runtimeError}</p>
-      )}
-
-      {processExitReason ? (
-        <button
-          className="exit-notice"
-          onClick={clearProcessExitReason}
-          type="button"
-        >
-          进程退出：{processExitReason}，点击关闭提示
+  const pageActions =
+    currentPage === "home" ? (
+      <>
+        <button className="ghost-button" disabled={busy} onClick={handleStartAll} type="button">
+          启动全部
         </button>
-      ) : null}
+        <button className="ghost-button" disabled={busy} onClick={handleStopAll} type="button">
+          停止全部
+        </button>
+      </>
+    ) : currentPage === "rules" ? (
+      <>
+        <button className="ghost-button" disabled={busy} onClick={handleRefresh} type="button">
+          刷新
+        </button>
+        <button className="primary-button" disabled={busy} onClick={handleAddRule} type="button">
+          新增规则
+        </button>
+      </>
+    ) : currentPage === "logs" ? (
+      <button className="ghost-button" onClick={handleClearLogs} type="button">
+        清空日志
+      </button>
+    ) : null;
 
-      <StatusBar
-        lastError={runtime?.last_error?.summary ?? actionError ?? runtimeError}
-        notice={processExitReason}
+  const pageContent =
+    currentPage === "home" ? (
+      <HomePage
+        logs={mergedLogs}
+        onDismissProcessExitReason={clearProcessExitReason}
+        onOpenLogs={() => setCurrentPage("logs")}
+        onOpenRules={() => setCurrentPage("rules")}
+        processExitReason={processExitReason}
         rules={rules}
         runtime={runtime}
       />
+    ) : currentPage === "rules" ? (
+      <RulesPage
+        error={rulesError}
+        loading={rulesLoading}
+        onDeleteRule={handleDeleteRule}
+        onEditRule={handleEditRule}
+        onStartRule={handleStartRule}
+        onStopRule={handleStopRule}
+        rules={rules}
+        runtime={runtime}
+      />
+    ) : currentPage === "logs" ? (
+      <LogsPage logs={mergedLogs} onClearLogs={handleClearLogs} />
+    ) : (
+      <SettingsPage rules={rules} runtime={runtime} />
+    );
+
+  return (
+    <main className="app-shell">
+      <Sidebar
+        activeRuleCount={activeRuleCount}
+        currentPage={currentPage}
+        onNavigate={setCurrentPage}
+        processStatus={runtime?.process_status ?? "unknown"}
+        totalRuleCount={rules.length}
+      />
+
+      <section className="app-main">
+        <PageHeader
+          actions={pageActions}
+          description={pageMeta[currentPage].description}
+          title={pageMeta[currentPage].title}
+        />
+
+        {(runtimeError || actionError) && (
+          <p className="error-banner">{actionError ?? runtimeError}</p>
+        )}
+
+        {pageContent}
+      </section>
 
       <RuleDialog
         initialRule={editingRule}

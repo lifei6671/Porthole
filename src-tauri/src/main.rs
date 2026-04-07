@@ -41,7 +41,6 @@ fn main() {
                 gost_process.clone(),
                 emitter.clone(),
                 resolve_sidecar_path(app.handle()),
-                "http://127.0.0.1:18080/api/config/services",
             );
             spawn_runtime_event_bridge(gost_process, emitter, Duration::from_millis(100));
             app.manage(state);
