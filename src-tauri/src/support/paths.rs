@@ -7,6 +7,7 @@ use tauri::Manager;
 pub struct AppPaths {
     data_dir: PathBuf,
     rules_file: PathBuf,
+    runtime_state_file: PathBuf,
     gost_config_file: PathBuf,
     gost_pid_file: PathBuf,
     sidecar_dir: PathBuf,
@@ -19,6 +20,7 @@ impl AppPaths {
         let sidecar_dir = data_dir.join("sidecar");
         Self {
             rules_file: data_dir.join("rules.toml"),
+            runtime_state_file: data_dir.join("runtime-state.toml"),
             gost_config_file: data_dir.join("gost.yaml"),
             gost_pid_file: data_dir.join("gost.pid"),
             gost_runtime_executable: sidecar_dir.join("gost.exe"),
@@ -52,6 +54,10 @@ impl AppPaths {
 
     pub fn gost_config_file(&self) -> &Path {
         &self.gost_config_file
+    }
+
+    pub fn runtime_state_file(&self) -> &Path {
+        &self.runtime_state_file
     }
 
     pub fn gost_pid_file(&self) -> &Path {

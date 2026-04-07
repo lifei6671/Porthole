@@ -11,6 +11,7 @@ mod support {
 }
 
 use std::path::PathBuf;
+use std::thread;
 use std::time::Duration;
 
 use app_state::AppState;
@@ -43,7 +44,16 @@ fn main() {
                 resolve_sidecar_path(app.handle()),
             );
             spawn_runtime_event_bridge(gost_process, emitter, Duration::from_millis(100));
+            let restore_state = state.clone();
             app.manage(state);
+            thread::spawn(move || {
+                thread::sleep(Duration::from_millis(350));
+                if let Err(err) = restore_state.restore_last_active_rules() {
+                    restore_state.append_app_error_log(format!(
+                        "恢复上次运行中的端口转发失败：{err}"
+                    ));
+                }
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

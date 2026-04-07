@@ -75,6 +75,11 @@ fn sample_rule_input(name: &str, enabled: bool) -> RuleInputPayload {
 }
 
 #[cfg(unix)]
+fn sleep_launcher(_: &service::gost_process::GostLaunchRequest) -> Result<Child, GostProcessError> {
+    Ok(spawn_script_child("sleep 1"))
+}
+
+#[cfg(unix)]
 fn build_state(
     launcher: Arc<
         dyn Fn(&service::gost_process::GostLaunchRequest) -> Result<Child, GostProcessError>
@@ -86,6 +91,19 @@ fn build_state(
     let temp_dir = tempdir().expect("create temp dir");
     let temp_path = temp_dir.path().to_path_buf();
     std::mem::forget(temp_dir);
+    build_state_with_path(temp_path, launcher)
+}
+
+#[cfg(unix)]
+fn build_state_with_path(
+    temp_path: PathBuf,
+    launcher: Arc<
+        dyn Fn(&service::gost_process::GostLaunchRequest) -> Result<Child, GostProcessError>
+            + Send
+            + Sync
+            + 'static,
+    >,
+) -> (AppState, Arc<Mutex<Vec<RuntimeEventMessage>>>) {
     let paths = AppPaths::new(temp_path);
     let rule_store = RuleStore::new(paths.clone());
     rule_store.ensure_initialized().expect("init rule store");
@@ -270,4 +288,30 @@ fn runtime_bridge_emits_process_exit_and_log_events() {
         snapshot.runtime.process_status,
         model::runtime::ProcessStatus::Stopped
     ));
+}
+
+#[cfg(unix)]
+#[test]
+fn app_state_restores_last_active_rules_on_next_boot() {
+    let temp_dir = tempdir().expect("create temp dir");
+    let temp_path = temp_dir.path().to_path_buf();
+
+    let launcher = Arc::new(sleep_launcher);
+    let (state, _) = build_state_with_path(temp_path.clone(), launcher.clone());
+
+    let created =
+        create_rule_inner(&state, sample_rule_input("Restore Rule", true)).expect("create rule");
+    start_rule_inner(&state, &created.id).expect("start rule");
+
+    let (restored_state, _) = build_state_with_path(temp_path, launcher);
+    let restored = restored_state
+        .restore_last_active_rules()
+        .expect("restore last active rules")
+        .expect("runtime should be restored");
+
+    assert!(matches!(
+        restored.process_status,
+        model::runtime::ProcessStatus::Running
+    ));
+    assert!(restored.active_rule_ids.contains(&created.id));
 }

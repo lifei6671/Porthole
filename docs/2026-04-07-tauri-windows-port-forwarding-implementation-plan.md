@@ -590,3 +590,7 @@ npm run tauri build
   - 验证：`cd src-tauri && cargo test --tests -- --nocapture`，`cd src-tauri && cargo check`，`npm run test`，`npm run build`，`make build-win`
   - 结果：`PASS`
   - 说明：新增 `firewall.rs`，实现 Windows 下按协议与端口精确创建/删除入站规则，启动非回环监听规则时自动申请 UAC 提权同步防火墙；停止、删除规则时自动清理规则，失败仅记录 `app` 日志而不阻断端口转发
+- 2026-04-07 补充变更：防火墙幂等同步与启动恢复
+  - 验证：`cd src-tauri && cargo fmt --all`，`cd src-tauri && cargo test --test firewall_tests --test runtime_state_store_tests --test commands_tests -- --nocapture`，`cd src-tauri && cargo check`，`make build-win`
+  - 结果：`PASS`
+  - 说明：防火墙同步改为先查询现有 `Porthole-*` 规则，仅在存在实际增删时才执行 PowerShell/UAC；新增 `runtime-state.toml` 记录上次实际运行中的规则，应用启动后自动恢复这些规则，恢复失败只写入 `app` 日志而不阻断主界面启动

@@ -10,9 +10,9 @@ use crate::support::paths::AppPaths;
 #[cfg(target_os = "windows")]
 use std::fs;
 #[cfg(target_os = "windows")]
-use std::process::{Command, Stdio};
-#[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+#[cfg(target_os = "windows")]
+use std::process::{Command, Stdio};
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -175,6 +175,12 @@ impl FirewallManager {
 
         #[cfg(target_os = "windows")]
         {
+            let existing_rule_names = query_existing_rule_names(&plan)?;
+            let plan = prune_sync_plan(plan, &existing_rule_names);
+            if plan.is_empty() {
+                return Ok(Vec::new());
+            }
+
             self.paths
                 .ensure_data_dir()
                 .map_err(|err| FirewallError::Io("创建应用数据目录失败".to_string(), err))?;
@@ -223,6 +229,24 @@ pub(crate) fn build_sync_plan(
     }
 }
 
+pub(crate) fn prune_sync_plan(
+    plan: FirewallSyncPlan,
+    existing_rule_names: &BTreeSet<String>,
+) -> FirewallSyncPlan {
+    FirewallSyncPlan {
+        add_rules: plan
+            .add_rules
+            .into_iter()
+            .filter(|rule| !existing_rule_names.contains(&rule.display_name))
+            .collect(),
+        remove_rule_names: plan
+            .remove_rule_names
+            .into_iter()
+            .filter(|rule_name| existing_rule_names.contains(rule_name))
+            .collect(),
+    }
+}
+
 pub(crate) fn firewall_rule_name(rule: &Rule) -> String {
     format!(
         "Porthole-{}-{}-{}",
@@ -267,6 +291,68 @@ fn default_elevation_checker() -> Result<bool, FirewallError> {
 #[cfg(not(target_os = "windows"))]
 fn default_elevation_checker() -> Result<bool, FirewallError> {
     Ok(true)
+}
+
+#[cfg(target_os = "windows")]
+fn query_existing_rule_names(plan: &FirewallSyncPlan) -> Result<BTreeSet<String>, FirewallError> {
+    let names = plan
+        .add_rules
+        .iter()
+        .map(|rule| rule.display_name.clone())
+        .chain(plan.remove_rule_names.iter().cloned())
+        .collect::<BTreeSet<_>>();
+
+    if names.is_empty() {
+        return Ok(BTreeSet::new());
+    }
+
+    let names_literal = names
+        .iter()
+        .map(|name| format!("'{}'", escape_powershell_single_quoted(name)))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let script = format!(
+        "$names = @({names_literal}); foreach ($name in $names) {{ if ($null -ne (Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue | Select-Object -First 1)) {{ Write-Output $name }} }}"
+    );
+
+    let output = hidden_powershell_command()
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &script,
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|err| FirewallError::Io("查询 Windows 防火墙规则失败".to_string(), err))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(FirewallError::Command(format!(
+            "查询 Windows 防火墙规则失败，退出码: {}{}",
+            output.status,
+            if stderr.is_empty() {
+                String::new()
+            } else {
+                format!("，错误: {stderr}")
+            }
+        )));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(ToOwned::to_owned)
+        .collect())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn query_existing_rule_names(_plan: &FirewallSyncPlan) -> Result<BTreeSet<String>, FirewallError> {
+    Ok(BTreeSet::new())
 }
 
 #[cfg(target_os = "windows")]

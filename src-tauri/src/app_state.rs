@@ -17,6 +17,9 @@ use crate::service::gost_process::{
 };
 use crate::service::rule_store::{RuleStore, RuleStoreError};
 use crate::service::runtime_events::RuntimeEventEmitter;
+use crate::service::runtime_state_store::{
+    PersistedRuntimeState, RuntimeStateStore, RuntimeStateStoreError,
+};
 use crate::service::validator::{validate_before_save, validate_before_start, ValidationErrors};
 use crate::support::paths::AppPaths;
 
@@ -26,6 +29,7 @@ pub struct AppState {
     rule_store: RuleStore,
     gost_process: GostProcessManager,
     firewall_manager: FirewallManager,
+    runtime_state_store: RuntimeStateStore,
     runtime_events: RuntimeEventEmitter,
     gost_sidecar_path: PathBuf,
     gost_api_binding_provider: Arc<dyn Fn() -> Result<GostApiBinding, AppStateError> + Send + Sync>,
@@ -60,11 +64,13 @@ impl AppState {
         >,
     ) -> Self {
         let firewall_manager = FirewallManager::new(paths.clone());
+        let runtime_state_store = RuntimeStateStore::new(paths.clone());
         Self {
             paths,
             rule_store,
             gost_process,
             firewall_manager,
+            runtime_state_store,
             runtime_events,
             gost_sidecar_path,
             gost_api_binding_provider,
@@ -190,6 +196,7 @@ impl AppState {
     pub fn stop_all_rules(&self) -> Result<RuntimeState, AppStateError> {
         let snapshot = self.rule_store.load()?;
         let runtime = self.gost_process.stop()?;
+        self.persist_last_active_rule_ids(&BTreeSet::new());
         self.sync_firewall_rules(&snapshot.rules, &BTreeSet::new());
         self.runtime_events.emit_runtime_changed(runtime.clone());
         Ok(runtime)
@@ -207,6 +214,41 @@ impl AppState {
         self.gost_process.clear_logs();
     }
 
+    pub fn append_app_info_log(&self, message: impl Into<String>) {
+        self.gost_process.append_app_info_log(message);
+    }
+
+    pub fn append_app_error_log(&self, message: impl Into<String>) {
+        self.gost_process.append_app_error_log(message);
+    }
+
+    pub fn restore_last_active_rules(&self) -> Result<Option<RuntimeState>, AppStateError> {
+        let snapshot = self.rule_store.load()?;
+        let persisted = self.runtime_state_store.load()?;
+        let known_rule_ids = snapshot
+            .rules
+            .iter()
+            .map(|rule| rule.id.clone())
+            .collect::<BTreeSet<_>>();
+        let active_ids = persisted
+            .last_active_rule_ids
+            .into_iter()
+            .filter(|rule_id| known_rule_ids.contains(rule_id))
+            .collect::<BTreeSet<_>>();
+
+        if active_ids.is_empty() {
+            self.persist_last_active_rule_ids(&BTreeSet::new());
+            return Ok(None);
+        }
+
+        let runtime = self.apply_runtime_rules(&snapshot, active_ids.clone())?;
+        self.append_app_info_log(format!(
+            "已自动恢复上次运行中的 {} 条规则",
+            active_ids.len()
+        ));
+        Ok(Some(runtime))
+    }
+
     fn save_rules(&self, snapshot: RuleSet) -> Result<(), AppStateError> {
         validate_before_save(&snapshot)?;
         self.rule_store.save(&snapshot)?;
@@ -221,6 +263,7 @@ impl AppState {
     ) -> Result<RuntimeState, AppStateError> {
         if active_ids.is_empty() {
             let runtime = self.gost_process.stop()?;
+            self.persist_last_active_rule_ids(&BTreeSet::new());
             self.sync_firewall_rules(&snapshot.rules, &BTreeSet::new());
             self.runtime_events.emit_runtime_changed(runtime.clone());
             return Ok(runtime);
@@ -245,9 +288,21 @@ impl AppState {
         } else {
             self.gost_process.reload(request)?
         };
+        self.persist_last_active_rule_ids(&active_ids);
         self.sync_firewall_rules(&snapshot.rules, &active_ids);
         self.runtime_events.emit_runtime_changed(runtime.clone());
         Ok(runtime)
+    }
+
+    fn persist_last_active_rule_ids(&self, active_rule_ids: &BTreeSet<String>) {
+        let snapshot = PersistedRuntimeState {
+            last_active_rule_ids: active_rule_ids.clone(),
+        };
+        if let Err(err) = self.runtime_state_store.save(&snapshot) {
+            self.gost_process.append_app_error_log(format!(
+                "保存自动恢复状态失败，但端口转发仍可继续运行：{err}"
+            ));
+        }
     }
 
     fn sync_firewall_rules(&self, rules: &[Rule], active_ids: &BTreeSet<String>) {
@@ -256,18 +311,20 @@ impl AppState {
         let rules = rules.to_vec();
         let active_ids = active_ids.clone();
 
-        thread::spawn(move || match firewall_manager.sync_rules(&rules, &active_ids) {
-            Ok(messages) => {
-                for message in messages {
-                    gost_process.append_app_info_log(message);
+        thread::spawn(
+            move || match firewall_manager.sync_rules(&rules, &active_ids) {
+                Ok(messages) => {
+                    for message in messages {
+                        gost_process.append_app_info_log(message);
+                    }
                 }
-            }
-            Err(err) => {
-                gost_process.append_app_error_log(format!(
-                    "同步 Windows 防火墙规则失败，但端口转发仍可继续运行：{err}"
-                ));
-            }
-        });
+                Err(err) => {
+                    gost_process.append_app_error_log(format!(
+                        "同步 Windows 防火墙规则失败，但端口转发仍可继续运行：{err}"
+                    ));
+                }
+            },
+        );
     }
 
     fn sync_removed_firewall_rule(&self, rule: &Rule) {
@@ -282,9 +339,7 @@ impl AppState {
                 }
             }
             Err(err) => {
-                gost_process.append_app_error_log(format!(
-                    "清理 Windows 防火墙规则失败：{err}"
-                ));
+                gost_process.append_app_error_log(format!("清理 Windows 防火墙规则失败：{err}"));
             }
         });
     }
@@ -364,6 +419,7 @@ pub struct RuleInput {
 #[derive(Debug)]
 pub enum AppStateError {
     RuleStore(RuleStoreError),
+    RuntimeStateStore(RuntimeStateStoreError),
     Validation(ValidationErrors),
     Process(GostProcessError),
     NotFound(String),
@@ -374,6 +430,7 @@ impl std::fmt::Display for AppStateError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::RuleStore(err) => write!(f, "{err}"),
+            Self::RuntimeStateStore(err) => write!(f, "{err}"),
             Self::Validation(err) => write!(f, "{err}"),
             Self::Process(err) => write!(f, "{err}"),
             Self::NotFound(message) => write!(f, "{message}"),
@@ -393,6 +450,12 @@ impl From<RuleStoreError> for AppStateError {
 impl From<ValidationErrors> for AppStateError {
     fn from(value: ValidationErrors) -> Self {
         Self::Validation(value)
+    }
+}
+
+impl From<RuntimeStateStoreError> for AppStateError {
+    fn from(value: RuntimeStateStoreError) -> Self {
+        Self::RuntimeStateStore(value)
     }
 }
 
