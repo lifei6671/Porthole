@@ -5,6 +5,10 @@ interface RuleListProps {
   runtime: RuntimeState | null;
   loading: boolean;
   error: string | null;
+  onStartRule: (ruleID: string) => void;
+  onStopRule: (ruleID: string) => void;
+  onEditRule: (rule: Rule) => void;
+  onDeleteRule: (rule: Rule) => void;
 }
 
 function formatEndpoint(host: string, port: number) {
@@ -15,7 +19,16 @@ function resolveRuleStatus(runtime: RuntimeState | null, ruleID: string) {
   return runtime?.rule_statuses.find((item) => item.rule_id === ruleID)?.status ?? "stopped";
 }
 
-export function RuleList({ rules, runtime, loading, error }: RuleListProps) {
+export function RuleList({
+  rules,
+  runtime,
+  loading,
+  error,
+  onStartRule,
+  onStopRule,
+  onEditRule,
+  onDeleteRule,
+}: RuleListProps) {
   return (
     <section className="panel" aria-label="Rule list">
       <div className="panel-header">
@@ -69,7 +82,39 @@ export function RuleList({ rules, runtime, loading, error }: RuleListProps) {
                 <span>
                   <span className={`status-pill status-${status}`}>{status}</span>
                 </span>
-                <span className="rule-actions-placeholder">单条操作在 Task 7 实现</span>
+                <span className="rule-actions">
+                  {status === "running" || status === "starting" ? (
+                    <button
+                      className="ghost-button mini-button"
+                      onClick={() => onStopRule(rule.id)}
+                      type="button"
+                    >
+                      停止
+                    </button>
+                  ) : (
+                    <button
+                      className="ghost-button mini-button"
+                      onClick={() => onStartRule(rule.id)}
+                      type="button"
+                    >
+                      启动
+                    </button>
+                  )}
+                  <button
+                    className="ghost-button mini-button"
+                    onClick={() => onEditRule(rule)}
+                    type="button"
+                  >
+                    编辑
+                  </button>
+                  <button
+                    className="ghost-button mini-button danger-button"
+                    onClick={() => onDeleteRule(rule)}
+                    type="button"
+                  >
+                    删除
+                  </button>
+                </span>
               </article>
             );
           })}

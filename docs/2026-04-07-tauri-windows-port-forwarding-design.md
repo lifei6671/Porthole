@@ -18,6 +18,19 @@
 第一阶段只实现 MVP 工具版。后续第二阶段在该基础上增强托盘、自启、
 导入导出等桌面工具能力。
 
+## 实现状态
+
+- 实现计划：
+  [2026-04-07-tauri-windows-port-forwarding-implementation-plan.md](/home/lifei6671/src/github.com/lifei6671/Porthole/docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md)
+- 验证报告：
+  [2026-04-07-tauri-windows-port-forwarding-verification-report.md](/home/lifei6671/src/github.com/lifei6671/Porthole/docs/2026-04-07-tauri-windows-port-forwarding-verification-report.md)
+
+当前进度：
+
+- Task 1 - Task 7 已完成
+- Task 8 自动化验证已部分完成
+- Windows 手工验证矩阵与完整 `tauri build` 退出结果仍待收口
+
 
 ## 2. 范围界定
 

@@ -69,6 +69,9 @@ mod platform {
         handle: Handle,
     }
 
+    unsafe impl Send for JobObject {}
+    unsafe impl Sync for JobObject {}
+
     impl JobObject {
         pub fn new() -> io::Result<Self> {
             unsafe {

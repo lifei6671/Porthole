@@ -22,6 +22,9 @@ const DEFAULT_HEALTH_CHECK_INTERVAL: Duration = Duration::from_millis(100);
 const DEFAULT_HEALTH_CHECK_TIMEOUT: Duration = Duration::from_secs(2);
 const MAX_LOG_ENTRIES: usize = 500;
 
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 type ProcessLauncher =
     dyn Fn(&GostLaunchRequest) -> Result<Child, GostProcessError> + Send + Sync + 'static;
 type HealthChecker =
@@ -38,6 +41,8 @@ pub struct ProcessLogEntry {
 pub enum ProcessLogSource {
     Stdout,
     Stderr,
+    AppInfo,
+    AppError,
 }
 
 #[derive(Debug, Clone)]
@@ -180,6 +185,20 @@ impl GostProcessManager {
     pub fn clear_logs(&self) {
         if let Ok(mut state) = self.state.lock() {
             state.logs.clear();
+        }
+    }
+
+    pub fn append_app_info_log(&self, message: impl Into<String>) {
+        self.append_log(ProcessLogSource::AppInfo, message.into());
+    }
+
+    pub fn append_app_error_log(&self, message: impl Into<String>) {
+        self.append_log(ProcessLogSource::AppError, message.into());
+    }
+
+    fn append_log(&self, source: ProcessLogSource, message: String) {
+        if let Ok(mut state) = self.state.lock() {
+            push_log(&mut state.logs, source, message);
         }
     }
 
@@ -352,6 +371,13 @@ fn default_launcher(request: &GostLaunchRequest) -> Result<Child, GostProcessErr
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
 
     command.spawn().map_err(|err| {
         GostProcessError::Io(

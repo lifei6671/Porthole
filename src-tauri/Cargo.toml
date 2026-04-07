@@ -6,6 +6,10 @@ authors = ["lifei6671"]
 edition = "2021"
 default-run = "porthole"
 
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

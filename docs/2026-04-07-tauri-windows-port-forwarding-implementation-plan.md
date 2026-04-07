@@ -127,7 +127,7 @@
 - [x] Task 4 完成：`gost` 进程管理与运行态
 - [x] Task 5 完成：Tauri Command 与事件推送
 - [x] Task 6 完成：前端骨架与规则列表
-- [ ] Task 7 完成：规则编辑、日志与状态 UI
+- [x] Task 7 完成：规则编辑、日志与状态 UI
 - [ ] Task 8 完成：端到端验证与文档收尾
 
 ### 2.2 任务表
@@ -427,28 +427,33 @@ npm run test -- rule-list
 
 **任务状态：** `- [ ] 未完成`
 
+**任务状态：** `- [x] 已完成`
+
 **Files:**
 - Create: `src/components/rule-dialog.tsx`
 - Create: `src/components/log-panel.tsx`
-- Create: `src/hooks/use-runtime-events.ts`
+- Modify: `src/hooks/use-runtime-events.ts`
 - Create: `src/lib/validators.ts`
 - Create: `src/__tests__/rule-dialog.test.tsx`
 - Create: `src/__tests__/log-panel.test.tsx`
+- Modify: `src/__tests__/rule-list.test.tsx`
 - Modify: `src/App.tsx`
 - Modify: `src/components/rule-list.tsx`
 - Modify: `src/components/status-bar.tsx`
 - Modify: `src/styles/app.css`
+- Modify: `src/lib/api.ts`
+- Modify: `src/lib/types.ts`
 - Modify: [docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md](/home/lifei6671/src/github.com/lifei6671/Porthole/docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md)
 
-- [ ] Step 1: 实现新增/编辑规则弹窗，字段覆盖设计文档定义的 MVP 字段
-- [ ] Step 2: 实现前端即时校验，覆盖协议、端口、地址非空、基础 IP 合法性
-- [ ] Step 3: 在弹窗中增加监听地址与目标地址预览
-- [ ] Step 4: 实现单条规则操作按钮：启动、停止、编辑、删除
-- [ ] Step 5: 实现底部日志面板，展示时间、来源、级别、内容，并限制内存缓存条数
-- [ ] Step 6: 实现状态条，展示 `gost` 进程状态、当前运行规则数、最近错误
-- [ ] Step 7: 增加防火墙提示文案，当监听地址不是回环地址时，提示用户可能需要手动放行 Windows 防火墙
-- [ ] Step 8: 编写前端测试，覆盖弹窗提交流程、日志展示、状态更新
-- [ ] Step 9: 执行前端测试
+- [x] Step 1: 实现新增/编辑规则弹窗，字段覆盖设计文档定义的 MVP 字段
+- [x] Step 2: 实现前端即时校验，覆盖协议、端口、地址非空、基础 IP 合法性
+- [x] Step 3: 在弹窗中增加监听地址与目标地址预览
+- [x] Step 4: 实现单条规则操作按钮：启动、停止、编辑、删除
+- [x] Step 5: 实现底部日志面板，展示时间、来源、级别、内容，并限制内存缓存条数
+- [x] Step 6: 实现状态条，展示 `gost` 进程状态、当前运行规则数、最近错误
+- [x] Step 7: 增加防火墙提示文案，当监听地址不是回环地址时，提示用户可能需要手动放行 Windows 防火墙
+- [x] Step 8: 编写前端测试，覆盖弹窗提交流程、日志展示、状态更新
+- [x] Step 9: 执行前端测试
 
 **Run:**
 
@@ -462,7 +467,7 @@ npm run test -- log-panel
 - 弹窗与日志测试通过
 - 非回环监听地址会出现防火墙提示
 
-- [ ] Step 10: 回写本计划文档，标记 Task 7 已完成并记录测试结果
+- [x] Step 10: 回写本计划文档，标记 Task 7 已完成并记录测试结果
 
 **Verification Criteria:**
 
@@ -481,12 +486,12 @@ npm run test -- log-panel
 - Modify: [docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md](/home/lifei6671/src/github.com/lifei6671/Porthole/docs/2026-04-07-tauri-windows-port-forwarding-implementation-plan.md)
 - Create: `docs/2026-04-07-tauri-windows-port-forwarding-verification-report.md`
 
-- [ ] Step 1: 运行 Rust 全量测试
-- [ ] Step 2: 运行前端全量测试
+- [x] Step 1: 运行 Rust 全量测试
+- [x] Step 2: 运行前端全量测试
 - [ ] Step 3: 运行应用构建验证
 - [ ] Step 4: 在 Windows 上执行 MVP 手工验证矩阵
-- [ ] Step 5: 输出验证报告，记录通过项、失败项、环境信息、待跟进问题
-- [ ] Step 6: 回写设计文档，增加“实现状态”小节，链接实现计划与验证报告
+- [x] Step 5: 输出验证报告，记录通过项、失败项、环境信息、待跟进问题
+- [x] Step 6: 回写设计文档，增加“实现状态”小节，链接实现计划与验证报告
 - [ ] Step 7: 回写本计划文档，勾选全部已完成任务并补齐执行记录
 
 **Run:**
@@ -577,3 +582,7 @@ npm run tauri build
   - 验证：`npm run test -- rule-list`，`npm run build`
   - 结果：`PASS`
   - 说明：完成三段式前端骨架拆分，新增工具栏、规则列表、状态栏组件，并接入全局启停与刷新交互；补充 `vitest + Testing Library` 测试基建后，`rule-list` 测试覆盖空状态、规则渲染和工具栏按钮交互
+- 2026-04-07 Task 7 完成
+  - 验证：`npm run test -- rule-dialog`，`npm run test -- log-panel`，`npm run test`，`npm run build`
+  - 结果：`PASS`
+  - 说明：完成规则弹窗、前端校验、单条规则操作、`app/gost` 混合日志面板、状态条与防火墙提示；新增 `rule-dialog`/`log-panel` 测试覆盖提交流程、日志展示和状态提示，前端全量测试 7 条全部通过

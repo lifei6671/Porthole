@@ -14,6 +14,17 @@ export interface Rule {
   updated_at: string;
 }
 
+export interface RuleInput {
+  name: string;
+  enabled: boolean;
+  protocol: Protocol;
+  listen_host: string;
+  listen_port: number;
+  target_host: string;
+  target_port: number;
+  remark: string;
+}
+
 export type ProcessStatus =
   | "stopped"
   | "starting"
@@ -41,7 +52,11 @@ export interface RuntimeState {
   active_rule_ids: string[];
 }
 
-export type ProcessLogSource = "Stdout" | "Stderr";
+export type ProcessLogSource =
+  | "Stdout"
+  | "Stderr"
+  | "AppInfo"
+  | "AppError";
 
 export interface ProcessLogEntry {
   source: ProcessLogSource;
@@ -69,4 +84,15 @@ export interface LogsAppendedPayload {
 export interface ProcessExitedPayload {
   runtime: RuntimeState;
   reason: string | null;
+}
+
+export type UILogSource = "app" | "gost";
+export type UILogLevel = "info" | "error";
+
+export interface UILogEntry {
+  id: string;
+  source: UILogSource;
+  level: UILogLevel;
+  message: string;
+  observedAt: string;
 }

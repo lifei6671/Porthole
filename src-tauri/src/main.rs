@@ -1,3 +1,5 @@
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
 mod app_state;
 mod commands;
 mod model;
@@ -85,6 +87,7 @@ fn resolve_sidecar_path(app_handle: &tauri::AppHandle) -> PathBuf {
         candidates.push(resource_dir.join("gost.exe"));
         candidates.push(resource_dir.join("gost"));
         candidates.push(resource_dir.join("gost-x86_64-pc-windows-msvc.exe"));
+        candidates.push(resource_dir.join("gost-x86_64-pc-windows-gnu.exe"));
     }
 
     if let Ok(current_exe) = std::env::current_exe() {
@@ -92,6 +95,7 @@ fn resolve_sidecar_path(app_handle: &tauri::AppHandle) -> PathBuf {
             candidates.push(parent.join("gost.exe"));
             candidates.push(parent.join("gost"));
             candidates.push(parent.join("gost-x86_64-pc-windows-msvc.exe"));
+            candidates.push(parent.join("gost-x86_64-pc-windows-gnu.exe"));
         }
     }
 

@@ -22,5 +22,6 @@ target
 
 node_modules/
 dist/
+bin/
 target/
 .idea/

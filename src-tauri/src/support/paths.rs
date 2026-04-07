@@ -9,15 +9,20 @@ pub struct AppPaths {
     rules_file: PathBuf,
     gost_config_file: PathBuf,
     gost_pid_file: PathBuf,
+    sidecar_dir: PathBuf,
+    gost_runtime_executable: PathBuf,
 }
 
 impl AppPaths {
     pub fn new(data_dir: impl Into<PathBuf>) -> Self {
         let data_dir = data_dir.into();
+        let sidecar_dir = data_dir.join("sidecar");
         Self {
             rules_file: data_dir.join("rules.toml"),
             gost_config_file: data_dir.join("gost.yaml"),
             gost_pid_file: data_dir.join("gost.pid"),
+            gost_runtime_executable: sidecar_dir.join("gost.exe"),
+            sidecar_dir,
             data_dir,
         }
     }
@@ -31,6 +36,10 @@ impl AppPaths {
 
     pub fn ensure_data_dir(&self) -> io::Result<()> {
         std::fs::create_dir_all(&self.data_dir)
+    }
+
+    pub fn ensure_sidecar_dir(&self) -> io::Result<()> {
+        std::fs::create_dir_all(&self.sidecar_dir)
     }
 
     pub fn data_dir(&self) -> &Path {
@@ -47,5 +56,13 @@ impl AppPaths {
 
     pub fn gost_pid_file(&self) -> &Path {
         &self.gost_pid_file
+    }
+
+    pub fn sidecar_dir(&self) -> &Path {
+        &self.sidecar_dir
+    }
+
+    pub fn gost_runtime_executable(&self) -> &Path {
+        &self.gost_runtime_executable
     }
 }

@@ -38,7 +38,18 @@ function sampleRuntime(): RuntimeState {
 
 describe("RuleList", () => {
   it("renders empty state when there are no rules", () => {
-    render(<RuleList error={null} loading={false} rules={[]} runtime={null} />);
+    render(
+      <RuleList
+        error={null}
+        loading={false}
+        onDeleteRule={vi.fn()}
+        onEditRule={vi.fn()}
+        onStartRule={vi.fn()}
+        onStopRule={vi.fn()}
+        rules={[]}
+        runtime={null}
+      />,
+    );
 
     expect(screen.getByText("还没有可用规则")).toBeInTheDocument();
     expect(
@@ -51,6 +62,10 @@ describe("RuleList", () => {
       <RuleList
         error={null}
         loading={false}
+        onDeleteRule={vi.fn()}
+        onEditRule={vi.fn()}
+        onStartRule={vi.fn()}
+        onStopRule={vi.fn()}
         rules={[sampleRule()]}
         runtime={sampleRuntime()}
       />,
@@ -60,7 +75,9 @@ describe("RuleList", () => {
     expect(screen.getByText("0.0.0.0:8080")).toBeInTheDocument();
     expect(screen.getByText("127.0.0.1:80")).toBeInTheDocument();
     expect(screen.getByText("running")).toBeInTheDocument();
-    expect(screen.getByText("单条操作在 Task 7 实现")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "停止" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "编辑" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "删除" })).toBeInTheDocument();
   });
 });
 

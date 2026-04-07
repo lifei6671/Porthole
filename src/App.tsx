@@ -1,9 +1,59 @@
-import { clearLogs } from "./lib/api";
+import { useState } from "react";
+
+import {
+  clearLogs,
+  createRule,
+  deleteRule,
+  startRule,
+  stopRule,
+  updateRule,
+} from "./lib/api";
 import { AppToolbar } from "./components/app-toolbar";
+import { LogPanel } from "./components/log-panel";
+import { RuleDialog } from "./components/rule-dialog";
 import { RuleList } from "./components/rule-list";
 import { StatusBar } from "./components/status-bar";
 import { useRules } from "./hooks/use-rules";
 import { useRuntimeEvents } from "./hooks/use-runtime-events";
+import type { ProcessLogEntry, Rule, RuleInput, UILogEntry } from "./lib/types";
+
+const maxUILogEntries = 500;
+
+function toUILogEntry(entry: ProcessLogEntry): UILogEntry {
+  if (entry.source === "AppInfo" || entry.source === "AppError") {
+    return {
+      id: `${entry.observed_at}-${entry.source}-${entry.message}`,
+      source: "app",
+      level: entry.source === "AppError" ? "error" : "info",
+      message: entry.message,
+      observedAt: entry.observed_at,
+    };
+  }
+
+  return {
+    id: `${entry.observed_at}-${entry.source}-${entry.message}`,
+    source: "gost",
+    level: entry.source === "Stderr" ? "error" : "info",
+    message: entry.message,
+    observedAt: entry.observed_at,
+  };
+}
+
+function appendUILog(
+  current: UILogEntry[],
+  source: UILogEntry["source"],
+  level: UILogEntry["level"],
+  message: string,
+) {
+  const next = current.concat({
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    source,
+    level,
+    message,
+    observedAt: new Date().toISOString(),
+  });
+  return next.slice(-maxUILogEntries);
+}
 
 export function App() {
   const {
@@ -24,21 +74,131 @@ export function App() {
     clearLocalLogs,
     clearProcessExitReason,
   } = useRuntimeEvents();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [editingRule, setEditingRule] = useState<Rule | null>(null);
+  const [appLogs, setAppLogs] = useState<UILogEntry[]>([]);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const activeRuleCount = runtime?.active_rule_ids.length ?? 0;
   const busy = rulesLoading || runtimeLoading;
+  const mergedLogs = appLogs.concat(logs.map(toUILogEntry)).slice(-maxUILogEntries);
+
+  function addAppLog(level: UILogEntry["level"], message: string) {
+    setAppLogs((current) => appendUILog(current, "app", level, message));
+  }
 
   async function handleClearLogs() {
     await clearLogs();
     clearLocalLogs();
+    setAppLogs([]);
+    addAppLog("info", "日志已清空");
   }
 
   async function handleRefresh() {
     await Promise.all([refreshRules(), refreshRuntime()]);
+    addAppLog("info", "已刷新规则和运行状态");
   }
 
   function handleAddRule() {
-    window.alert("规则弹窗将在 Task 7 实现。");
+    setDialogMode("create");
+    setEditingRule(null);
+    setDialogOpen(true);
+  }
+
+  function handleEditRule(rule: Rule) {
+    setDialogMode("edit");
+    setEditingRule(rule);
+    setDialogOpen(true);
+  }
+
+  function closeDialog() {
+    setDialogOpen(false);
+    setEditingRule(null);
+  }
+
+  async function handleSubmitRule(input: RuleInput) {
+    setActionError(null);
+
+    try {
+      if (dialogMode === "create") {
+        await createRule(input);
+        addAppLog("info", `已创建规则：${input.name}`);
+      } else if (editingRule) {
+        await updateRule(editingRule.id, input);
+        addAppLog("info", `已更新规则：${input.name}`);
+      }
+
+      await Promise.all([refreshRules(), refreshRuntime()]);
+      closeDialog();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActionError(message);
+      addAppLog("error", `保存规则失败：${message}`);
+    }
+  }
+
+  async function handleStartRule(ruleID: string) {
+    try {
+      await startRule(ruleID);
+      await refreshRuntime();
+      addAppLog("info", `已启动规则：${ruleID}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActionError(message);
+      addAppLog("error", `启动规则失败：${message}`);
+    }
+  }
+
+  async function handleStopRule(ruleID: string) {
+    try {
+      await stopRule(ruleID);
+      await refreshRuntime();
+      addAppLog("info", `已停止规则：${ruleID}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActionError(message);
+      addAppLog("error", `停止规则失败：${message}`);
+    }
+  }
+
+  async function handleDeleteRule(rule: Rule) {
+    const confirmed = window.confirm(`确认删除规则“${rule.name}”？`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteRule(rule.id);
+      await Promise.all([refreshRules(), refreshRuntime()]);
+      addAppLog("info", `已删除规则：${rule.name}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActionError(message);
+      addAppLog("error", `删除规则失败：${message}`);
+    }
+  }
+
+  async function handleStartAll() {
+    try {
+      await startAll();
+      addAppLog("info", "已执行启动全部");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActionError(message);
+      addAppLog("error", `启动全部失败：${message}`);
+    }
+  }
+
+  async function handleStopAll() {
+    try {
+      await stopAll();
+      addAppLog("info", "已执行停止全部");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActionError(message);
+      addAppLog("error", `停止全部失败：${message}`);
+    }
   }
 
   return (
@@ -70,79 +230,52 @@ export function App() {
         busy={busy}
         onAddRule={handleAddRule}
         onRefresh={handleRefresh}
-        onStartAll={startAll}
-        onStopAll={stopAll}
+        onStartAll={handleStartAll}
+        onStopAll={handleStopAll}
       />
 
       <section className="workspace" aria-label="Application workspace">
         <RuleList
           error={rulesError}
           loading={rulesLoading}
+          onDeleteRule={handleDeleteRule}
+          onEditRule={handleEditRule}
+          onStartRule={handleStartRule}
+          onStopRule={handleStopRule}
           rules={rules}
           runtime={runtime}
         />
 
-        <section className="panel">
-          <div className="panel-header">
-            <div>
-              <h2>运行态与日志</h2>
-              <p>显示 `get_runtime_status` 快照与运行期事件流。</p>
-            </div>
-            <button className="ghost-button" onClick={handleClearLogs} type="button">
-              清空日志
-            </button>
-          </div>
-          {runtimeLoading ? <p className="placeholder">正在加载运行态...</p> : null}
-          {runtimeError ? <p className="error-text">{runtimeError}</p> : null}
-          {runtime?.last_error ? (
-            <p className="error-text">最近错误：{runtime.last_error.summary}</p>
-          ) : null}
-          {processExitReason ? (
-            <button
-              className="exit-notice"
-              onClick={clearProcessExitReason}
-              type="button"
-            >
-              进程退出：{processExitReason}，点击关闭提示
-            </button>
-          ) : null}
-          <div className="runtime-grid">
-            <article className="runtime-card">
-              <span className="metric-label">运行状态</span>
-              <strong className="metric-value">
-                {runtime?.process_status ?? "unknown"}
-              </strong>
-            </article>
-            <article className="runtime-card">
-              <span className="metric-label">日志条数</span>
-              <strong className="metric-value">{logs.length}</strong>
-            </article>
-          </div>
-          <div className="log-panel">
-            {logs.length ? (
-              logs.slice(-12).map((entry) => (
-                <article
-                  className="log-entry"
-                  key={`${entry.observed_at}-${entry.message}`}
-                >
-                  <span className={`log-source log-source-${entry.source.toLowerCase()}`}>
-                    {entry.source}
-                  </span>
-                  <time>{new Date(entry.observed_at).toLocaleTimeString()}</time>
-                  <p>{entry.message}</p>
-                </article>
-              ))
-            ) : (
-              <p className="placeholder">暂时没有日志。</p>
-            )}
-          </div>
-        </section>
+        <LogPanel entries={mergedLogs} onClear={handleClearLogs} />
       </section>
 
+      {(runtimeError || actionError) && (
+        <p className="error-banner">{actionError ?? runtimeError}</p>
+      )}
+
+      {processExitReason ? (
+        <button
+          className="exit-notice"
+          onClick={clearProcessExitReason}
+          type="button"
+        >
+          进程退出：{processExitReason}，点击关闭提示
+        </button>
+      ) : null}
+
       <StatusBar
-        lastError={runtime?.last_error?.summary ?? runtimeError}
+        lastError={runtime?.last_error?.summary ?? actionError ?? runtimeError}
         notice={processExitReason}
+        rules={rules}
         runtime={runtime}
+      />
+
+      <RuleDialog
+        initialRule={editingRule}
+        mode={dialogMode}
+        onClose={closeDialog}
+        onSubmit={handleSubmitRule}
+        open={dialogOpen}
       />
     </main>
   );
