@@ -19,6 +19,21 @@ function resolveRuleStatus(runtime: RuntimeState | null, ruleID: string) {
   return runtime?.rule_statuses.find((item) => item.rule_id === ruleID)?.status ?? "stopped";
 }
 
+function formatStatusLabel(status: string) {
+  switch (status) {
+    case "running":
+      return "运行中";
+    case "starting":
+      return "启动中";
+    case "stopping":
+      return "停止中";
+    case "failed":
+      return "异常";
+    default:
+      return "已停止";
+  }
+}
+
 export function RuleList({
   rules,
   runtime,
@@ -63,26 +78,41 @@ export function RuleList({
 
             return (
               <article className="rule-table-row" key={rule.id}>
-                <span className="rule-name-cell">
-                  <strong>{rule.name}</strong>
-                  <small>{rule.id}</small>
+                <span className="rule-name-cell" data-label="名称">
+                  <span className="rule-name-text">
+                    <strong>{rule.name}</strong>
+                    <small>{rule.id}</small>
+                  </span>
+                  <span className="rule-card-summary" aria-hidden="true">
+                    <span className={`badge badge-${rule.protocol}`}>
+                      {rule.protocol.toUpperCase()}
+                    </span>
+                    <span className={`status-pill status-${status}`}>
+                      {formatStatusLabel(status)}
+                    </span>
+                    <span className="meta-pill">
+                      {rule.enabled ? "已启用" : "未启用"}
+                    </span>
+                  </span>
                 </span>
-                <span>
+                <span className="rule-protocol-cell" data-label="协议">
                   <span className={`badge badge-${rule.protocol}`}>
                     {rule.protocol.toUpperCase()}
                   </span>
                 </span>
-                <span className="mono-cell">
+                <span className="mono-cell" data-label="监听">
                   {formatEndpoint(rule.listen_host, rule.listen_port)}
                 </span>
-                <span className="mono-cell">
+                <span className="mono-cell" data-label="目标">
                   {formatEndpoint(rule.target_host, rule.target_port)}
                 </span>
-                <span>{rule.enabled ? "是" : "否"}</span>
-                <span>
+                <span className="rule-enabled-cell" data-label="默认启用">
+                  {rule.enabled ? "是" : "否"}
+                </span>
+                <span className="rule-status-cell" data-label="运行状态">
                   <span className={`status-pill status-${status}`}>{status}</span>
                 </span>
-                <span className="rule-actions">
+                <span className="rule-actions" data-label="操作">
                   {status === "running" || status === "starting" ? (
                     <button
                       className="ghost-button mini-button"

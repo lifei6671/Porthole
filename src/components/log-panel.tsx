@@ -27,11 +27,13 @@ export function LogPanel({ entries, maxEntries = 14, onClear }: LogPanelProps) {
         {entries.length ? (
           entries.slice(-maxEntries).map((entry) => (
             <article className="log-entry" key={entry.id}>
-              <span className={`log-tag log-tag-${entry.source}`}>{entry.source}</span>
-              <span className={`log-tag log-tag-${entry.level}`}>
-                {normalizeLogLevel(entry)}
-              </span>
-              <time>{new Date(entry.observedAt).toLocaleTimeString()}</time>
+              <div className="log-entry-meta">
+                <span className={`log-tag log-tag-${entry.source}`}>{entry.source}</span>
+                <span className={`log-tag log-tag-${entry.level}`}>
+                  {normalizeLogLevel(entry)}
+                </span>
+                <time>{new Date(entry.observedAt).toLocaleTimeString()}</time>
+              </div>
               <p>{entry.message}</p>
             </article>
           ))

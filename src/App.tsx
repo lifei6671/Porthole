@@ -13,6 +13,7 @@ import {
   updateRule,
 } from "./lib/api";
 import { CloseToTrayDialog } from "./components/close-to-tray-dialog";
+import { DeleteRuleDialog } from "./components/delete-rule-dialog";
 import { PageHeader } from "./components/page-header";
 import { RuleDialog } from "./components/rule-dialog";
 import { Sidebar, type AppPage } from "./components/sidebar";
@@ -90,6 +91,7 @@ export function App() {
   const [actionPending, setActionPending] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [closeActionPending, setCloseActionPending] = useState(false);
+  const [deleteDialogRule, setDeleteDialogRule] = useState<Rule | null>(null);
 
   const activeRuleCount = runtime?.active_rule_ids.length ?? 0;
   const busy = rulesLoading || runtimeLoading || actionPending;
@@ -221,16 +223,27 @@ export function App() {
   }
 
   async function handleDeleteRule(rule: Rule) {
-    const confirmed = window.confirm(`确认删除规则“${rule.name}”？`);
-    if (!confirmed) {
+    setDeleteDialogRule(rule);
+  }
+
+  function closeDeleteDialog() {
+    if (!actionPending) {
+      setDeleteDialogRule(null);
+    }
+  }
+
+  async function handleConfirmDeleteRule() {
+    if (!deleteDialogRule) {
       return;
     }
 
+    const rule = deleteDialogRule;
     setActionPending(true);
     try {
       await deleteRule(rule.id);
       await Promise.all([refreshRules(), refreshRuntime()]);
       addAppLog("info", `已删除规则：${rule.name}`);
+      setDeleteDialogRule(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setActionError(message);
@@ -345,8 +358,6 @@ export function App() {
       <HomePage
         logs={mergedLogs}
         onDismissProcessExitReason={clearProcessExitReason}
-        onOpenLogs={() => setCurrentPage("logs")}
-        onOpenRules={() => setCurrentPage("rules")}
         processExitReason={processExitReason}
         rules={rules}
         runtime={runtime}
@@ -405,6 +416,13 @@ export function App() {
         onExitApplication={handleExitApplication}
         onHideToTray={handleHideToTray}
         open={closeDialogOpen}
+      />
+      <DeleteRuleDialog
+        busy={actionPending}
+        onCancel={closeDeleteDialog}
+        onConfirm={handleConfirmDeleteRule}
+        open={Boolean(deleteDialogRule)}
+        rule={deleteDialogRule}
       />
     </main>
   );

@@ -7,8 +7,6 @@ interface HomePageProps {
   logs: UILogEntry[];
   processExitReason: string | null;
   onDismissProcessExitReason: () => void;
-  onOpenRules: () => void;
-  onOpenLogs: () => void;
 }
 
 function formatStatusLabel(status: RuntimeState["process_status"] | "unknown") {
@@ -34,8 +32,6 @@ export function HomePage({
   logs,
   processExitReason,
   onDismissProcessExitReason,
-  onOpenRules,
-  onOpenLogs,
 }: HomePageProps) {
   const exposedRuleCount = rules.filter((rule) => needsFirewallNotice(rule.listen_host)).length;
   const recentLogs = logs.slice(-6).reverse();
@@ -44,28 +40,36 @@ export function HomePage({
     <div className="content-stack">
       <section className="home-hero-grid">
         <article className="overview-card overview-card-hero">
-          <span className="overview-label">gost 运行状态</span>
-          <strong className="overview-value">
-            {formatStatusLabel(runtime?.process_status ?? "unknown")}
-          </strong>
-          <p>
-            当前活跃规则 {runtime?.active_rule_ids.length ?? 0} 条，适合从这里快速判断转发器
-            是否已经成功工作。
+          <div className="home-hero-header">
+            <div>
+              <span className="overview-label">gost 运行状态</span>
+              <strong className="overview-value">
+                {formatStatusLabel(runtime?.process_status ?? "unknown")}
+              </strong>
+            </div>
+            <span className={`status-pill status-${runtime?.process_status ?? "stopped"}`}>
+              {formatStatusLabel(runtime?.process_status ?? "unknown")}
+            </span>
+          </div>
+          <p className="home-hero-description">
+            适合从这里快速判断端口转发是否处于可用状态，并直接跳到规则或日志页面继续操作。
           </p>
-          <div className="inline-actions">
-            <button className="ghost-button" onClick={onOpenRules} type="button">
-              查看规则
-            </button>
-            <button className="ghost-button" onClick={onOpenLogs} type="button">
-              查看日志
-            </button>
+          <div className="home-summary-strip">
+            <div className="home-summary-item">
+              <span>当前运行规则</span>
+              <strong>{runtime?.active_rule_ids.length ?? 0}</strong>
+            </div>
+            <div className="home-summary-item">
+              <span>对外监听规则</span>
+              <strong>{exposedRuleCount}</strong>
+            </div>
           </div>
         </article>
 
         <article className="overview-card">
           <span className="overview-label">已保存规则</span>
           <strong className="overview-value">{rules.length}</strong>
-          <p>所有 TCP/UDP 转发规则都会集中在 Rules 页面统一管理。</p>
+          <p>所有 TCP / UDP 规则都集中在 Rules 页面统一管理，适合做增删改查和单条启停。</p>
         </article>
 
         <article className="overview-card">
@@ -87,7 +91,11 @@ export function HomePage({
           <div className="info-list">
             <div className="info-row">
               <span>进程状态</span>
-              <strong>{formatStatusLabel(runtime?.process_status ?? "unknown")}</strong>
+              <strong>
+                <span className={`status-pill status-${runtime?.process_status ?? "stopped"}`}>
+                  {formatStatusLabel(runtime?.process_status ?? "unknown")}
+                </span>
+              </strong>
             </div>
             <div className="info-row">
               <span>当前运行规则</span>
@@ -112,9 +120,6 @@ export function HomePage({
               <h3>最近日志</h3>
               <p>只展示最近几条关键日志，完整内容请切到 Logs 页面。</p>
             </div>
-            <button className="ghost-button" onClick={onOpenLogs} type="button">
-              查看全部
-            </button>
           </div>
 
           <div className="recent-log-list">
