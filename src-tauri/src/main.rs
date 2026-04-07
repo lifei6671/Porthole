@@ -11,6 +11,10 @@ mod support {
 }
 
 use std::path::PathBuf;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::thread;
 use std::time::Duration;
 
@@ -26,10 +30,44 @@ use service::runtime_events::{
     EVENT_PROCESS_EXITED, EVENT_RULES_CHANGED, EVENT_RUNTIME_CHANGED,
 };
 use support::paths::AppPaths;
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Manager, WindowEvent};
 
 fn main() {
+    let exit_in_progress = Arc::new(AtomicBool::new(false));
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
+        .on_window_event({
+            let exit_in_progress = Arc::clone(&exit_in_progress);
+            move |window, event| {
+                if window.label() != "main" {
+                    return;
+                }
+
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+
+                    if exit_in_progress.swap(true, Ordering::SeqCst) {
+                        return;
+                    }
+
+                    let app_handle = window.app_handle().clone();
+                    let state = app_handle.state::<AppState>().inner().clone();
+                    let window = window.clone();
+
+                    thread::spawn(move || {
+                        let _ = window.hide();
+                        state.prepare_for_exit();
+                        app_handle.exit(0);
+                    });
+                }
+            }
+        })
         .setup(|app| {
             let paths = AppPaths::from_app_handle(app.handle())?;
             let rule_store = RuleStore::new(paths.clone());

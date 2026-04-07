@@ -166,6 +166,36 @@ impl GostProcessManager {
         self.start_locked(request)
     }
 
+    pub fn terminate_for_exit(&self) {
+        let _guard = match self.operation_lock.lock() {
+            Ok(guard) => guard,
+            Err(_) => return,
+        };
+
+        let managed = {
+            let mut state = match self.state.lock() {
+                Ok(state) => state,
+                Err(_) => return,
+            };
+            state.process.take()
+        };
+
+        if let Some(managed) = managed {
+            if let Ok(mut child) = managed.child.lock() {
+                let _ = child.kill();
+            }
+        }
+
+        let _ = clear_pid_file(self.paths.gost_pid_file());
+
+        if let Ok(mut state) = self.state.lock() {
+            state.runtime.process_status = ProcessStatus::Stopped;
+            state.runtime.last_error = None;
+            state.runtime.active_rule_ids.clear();
+            update_rule_statuses(&mut state.runtime, RuleProcessStatus::Stopped, None);
+        }
+    }
+
     pub fn runtime_snapshot(&self) -> RuntimeState {
         self.state
             .lock()

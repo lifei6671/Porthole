@@ -214,6 +214,10 @@ impl AppState {
         self.gost_process.clear_logs();
     }
 
+    pub fn prepare_for_exit(&self) {
+        self.gost_process.terminate_for_exit();
+    }
+
     pub fn append_app_info_log(&self, message: impl Into<String>) {
         self.gost_process.append_app_info_log(message);
     }

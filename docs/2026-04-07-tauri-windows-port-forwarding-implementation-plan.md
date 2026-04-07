@@ -594,3 +594,11 @@ npm run tauri build
   - 验证：`cd src-tauri && cargo fmt --all`，`cd src-tauri && cargo test --test firewall_tests --test runtime_state_store_tests --test commands_tests -- --nocapture`，`cd src-tauri && cargo check`，`make build-win`
   - 结果：`PASS`
   - 说明：防火墙同步改为先查询现有 `Porthole-*` 规则，仅在存在实际增删时才执行 PowerShell/UAC；新增 `runtime-state.toml` 记录上次实际运行中的规则，应用启动后自动恢复这些规则，恢复失败只写入 `app` 日志而不阻断主界面启动
+- 2026-04-07 补充变更：单实例应用唤起
+  - 验证：`cd src-tauri && cargo check`，`make build-win`
+  - 结果：`PASS`
+  - 说明：接入 `tauri-plugin-single-instance`，重复启动时不再创建第二个实例，而是唤起已运行的主窗口并尝试恢复焦点
+- 2026-04-07 补充变更：快速退出链路
+  - 验证：`cd src-tauri && cargo check`，`make build-win`
+  - 结果：`PASS`
+  - 说明：拦截主窗口关闭事件，先立即隐藏窗口，再快速终止 `gost` 子进程并退出应用，避免关闭时出现明显卡顿
